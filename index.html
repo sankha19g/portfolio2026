@@ -4,9 +4,11 @@
   <meta charset="UTF-8">
   <title>My Projects</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" type="image/svg+xml" href="https://www.svgrepo.com/show/506715/fire.svg">
 
   <!-- CSS LINK-->
   <link rel="stylesheet" href="css/style.css">
+  <script src="https://cdn.jsdelivr.net/npm/tinymce@7.6.0/tinymce.min.js" crossorigin="anonymous"></script>
 </head>
 <body>
  
@@ -24,13 +26,17 @@
           </a>
         <!-- Divider -->  <span class="divider"></span><!-- Divider -->  
         <!-- Resume button -->
-          <a href="files/resume.pdf" target="_blank" class="header-btn">Resume</a>
+          <a id="resumeLink" href="files/resume.pdf" target="_blank" class="header-btn">Resume</a>
           <!-- Divider -->  <span class="divider"></span><!-- Divider -->  
           <!-- Contact Me button -->
            <a href="#contact" class="header-btn">Contact Me</a>
         </div>
         <div class="right-header">
           <button id="adminAddButton" class="admin-add-btn" type="button" hidden>Add Project</button>
+          <button id="adminResumeButton" class="admin-resume-btn" type="button" hidden>Upload Resume</button>
+          <button id="adminDeleteButton" class="admin-delete-btn" type="button" hidden>Delete Project</button>
+          <button id="adminSortToggle" class="admin-sort-btn" type="button" hidden>Sort Projects</button>
+          <button id="adminLogout" class="admin-logout" type="button" hidden>Logout</button>
           <button id="adminToggle" class="admin-toggle" type="button">Admin</button>
         </div>
     </div>
@@ -58,9 +64,10 @@
           <!-- LEFT: Slider -->
           <div class="modal-left">
             <div class="slider">
-              <button class="prev">&#10094;</button>
+              <button id="sliderPrev" class="slider-prev" type="button">&#10094;</button>
               <img id="sliderImage" alt="Project screenshot">
-              <button class="next">&#10095;</button>
+              <button id="sliderNext" class="slider-next" type="button">&#10095;</button>
+              <button id="sliderZoom" class="slider-zoom" type="button" aria-label="View full screen">🔍</button>
             </div>
             <div class="thumbs" id="thumbs"></div>
           </div>
@@ -69,12 +76,13 @@
           <div class="modal-right">
             <div class="scroll-desc">
               <p id="projectDesc"></p>
-              <p id="projectTech"></p>
+              <div id="projectTech" class="tech-pills"></div>
             </div>
           </div>
         </div>
       
-        <div class="buttons">
+      <div class="buttons">
+          <button id="modalEdit" class="modal-edit" type="button" hidden>Edit</button>
           <a id="liveBtn" target="_blank">Visit Website</a>
           <a id="githubBtn" target="_blank">Visit GitHub</a>
         </div>
@@ -83,13 +91,49 @@
       
 </div>
 
+<!-- LINK ERROR POPUP -->
+<div class="link-error" id="linkError" aria-hidden="true">
+  <div class="link-error-card" role="dialog" aria-modal="true" aria-labelledby="linkErrorTitle">
+    <h3 id="linkErrorTitle">Link Unavailable</h3>
+    <p id="linkErrorMessage">This link is not available yet.</p>
+    <div class="link-error-actions">
+      <button id="linkErrorClose" class="admin-btn admin-primary" type="button">OK</button>
+    </div>
+  </div>
+</div>
+
+<!-- RESUME UPLOAD POPUP -->
+<div class="resume-upload" id="resumeUploadModal" aria-hidden="true">
+  <div class="resume-upload-card" role="dialog" aria-modal="true" aria-labelledby="resumeUploadTitle">
+    <h3 id="resumeUploadTitle">Upload Resume</h3>
+    <p>Upload a PDF to replace the resume link.</p>
+    <input id="resumeFile" type="file" accept="application/pdf">
+    <p id="resumeUploadStatus" class="resume-upload-status" aria-live="polite"></p>
+    <div class="resume-upload-actions">
+      <button id="resumeUploadCancel" class="admin-btn" type="button">Cancel</button>
+      <button id="resumeUploadConfirm" class="admin-btn admin-primary" type="button">Upload</button>
+    </div>
+  </div>
+</div>
+
+<!-- FULLSCREEN IMAGE VIEWER -->
+<div class="fullscreen" id="fullscreenModal" aria-hidden="true">
+  <div class="fullscreen-content" role="dialog" aria-modal="true" aria-label="Project images">
+    <button id="fullscreenClose" class="fullscreen-close" type="button" aria-label="Close full screen">×</button>
+    <button id="fullscreenPrev" class="fullscreen-arrow fullscreen-prev" type="button" aria-label="Previous image">&#10094;</button>
+    <img id="fullscreenImage" alt="Project screenshot full screen">
+    <button id="fullscreenNext" class="fullscreen-arrow fullscreen-next" type="button" aria-label="Next image">&#10095;</button>
+    <div id="fullscreenThumbs" class="thumbs fullscreen-thumbs"></div>
+  </div>
+</div>
+
 <!-- ADMIN PANEL -->
 <div class="admin-backdrop" id="adminBackdrop" aria-hidden="true"></div>
 <aside class="admin-panel" id="adminPanel" aria-hidden="true">
   <div class="admin-panel-content">
     <div class="admin-header">
-      <h2>Admin Mode</h2>
-      <button id="adminClose" class="admin-close" type="button">Close</button>
+      <h2>Add Your Project</h2>
+      <button id="adminClose" class="admin-close" type="button" aria-label="Close">×</button>
     </div>
 
     <div class="admin-body">
@@ -101,7 +145,7 @@
         <div class="admin-list" id="adminList"></div>
       </div>
 
-      <form id="adminForm" class="admin-form">
+      <form id="adminForm" class="admin-form" novalidate>
         <label class="admin-field">
           Title
           <input id="adminTitle" type="text" required>
@@ -109,7 +153,7 @@
 
         <label class="admin-field">
           Description
-          <textarea id="adminDesc" rows="4" required></textarea>
+          <textarea id="adminDesc" rows="5"></textarea>
         </label>
 
         <label class="admin-field">
@@ -124,7 +168,11 @@
 
         <label class="admin-field">
           GitHub URL
-          <input id="adminGithub" type="url" placeholder="https://">
+          <div class="admin-inline">
+            <input id="adminGithub" type="url" placeholder="https://github.com/username/repo">
+            <button id="adminGithubConnect" class="admin-btn admin-github" type="button">Connect GitHub</button>
+          </div>
+          <span class="admin-hint">Paste a GitHub repo link and click connect to pull language percentages.</span>
         </label>
 
         <label class="admin-field">
@@ -132,9 +180,10 @@
           <textarea id="adminImages" rows="4" placeholder="images/project1-1.jpg"></textarea>
         </label>
 
-        <label class="admin-field">
+        <label class="admin-field admin-upload">
           Upload Images (local preview)
-          <input id="adminImageFiles" type="file" accept="image/*" multiple>
+          <input id="adminImageFiles" class="admin-file-input" type="file" accept="image/*" multiple>
+          <span class="admin-upload-note">Choose multiple images for a quick preview.</span>
         </label>
 
         <div class="admin-footer">
@@ -156,6 +205,20 @@
     <div class="admin-auth-actions">
       <button id="adminAuthCancel" class="admin-btn" type="button">Cancel</button>
       <button id="adminAuthSubmit" class="admin-btn admin-primary" type="button">Unlock</button>
+    </div>
+  </div>
+</div>
+
+<!-- ADMIN DELETE POPUP -->
+<div class="admin-delete" id="adminDeleteModal" aria-hidden="true">
+  <div class="admin-delete-card" role="dialog" aria-modal="true" aria-labelledby="adminDeleteTitle">
+    <h3 id="adminDeleteTitle">Delete Project</h3>
+    <p>Select the project you want to delete.</p>
+    <select id="adminDeleteSelect" aria-label="Select project to delete"></select>
+    <p id="adminDeleteError" class="admin-delete-error" aria-live="polite"></p>
+    <div class="admin-delete-actions">
+      <button id="adminDeleteCancel" class="admin-btn" type="button">Cancel</button>
+      <button id="adminDeleteConfirm" class="admin-btn admin-danger" type="button">Delete</button>
     </div>
   </div>
 </div>
