@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>My Projects</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <!-- CSS LINK-->
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+ 
+    <div class="top-header">
+        <!-- Left side: social buttons -->
+        <div class="left-header">
+          <!-- gITHUB -->
+          <a href="https://github.com/yourusername" target="_blank" class="social-btn">
+            <img class="github-icon" src="images/logo/github.svg" alt="GitHub" />
+          </a>          
+         <!-- Divider --><span class="divider"></span> <!-- Divider -->
+          <!-- lINKEDIN -->
+         <a href="https://www.linkedin.com/in/yourusername" target="_blank" class="social-btn">
+            <img class="linkedin-icon" src="images/logo/linkedin.svg" alt="LinkedIn" />
+          </a>
+        <!-- Divider -->  <span class="divider"></span><!-- Divider -->  
+        <!-- Resume button -->
+          <a href="files/resume.pdf" target="_blank" class="header-btn">Resume</a>
+          <!-- Divider -->  <span class="divider"></span><!-- Divider -->  
+          <!-- Contact Me button -->
+           <a href="#contact" class="header-btn">Contact Me</a>
+        </div>
+        <div class="right-header">
+          <button id="adminAddButton" class="admin-add-btn" type="button" hidden>Add Project</button>
+          <button id="adminToggle" class="admin-toggle" type="button">Admin</button>
+        </div>
+    </div>
+
+
+
+
+<!-- DARK MODE TOGGLE -->
+<button id="themeToggle" class="theme-toggle">🌙</button>
+
+
+<h1 class="projects-heading">My Projects</h1>
+<!-- PROJECT GRID -->
+<div class="projects-grid" id="projectsGrid"></div>
+
+<!-- PROJECT MODAL -->
+<div class="modal" id="projectModal">
+    <div class="modal-content">
+
+        <span class="close" id="closeModal">&times;</span>
+      
+        <h2 id="projectTitle"></h2>
+      
+        <div class="modal-body">
+          <!-- LEFT: Slider -->
+          <div class="modal-left">
+            <div class="slider">
+              <button class="prev">&#10094;</button>
+              <img id="sliderImage" alt="Project screenshot">
+              <button class="next">&#10095;</button>
+            </div>
+            <div class="thumbs" id="thumbs"></div>
+          </div>
+      
+          <!-- RIGHT: Scrollable Description -->
+          <div class="modal-right">
+            <div class="scroll-desc">
+              <p id="projectDesc"></p>
+              <p id="projectTech"></p>
+            </div>
+          </div>
+        </div>
+      
+        <div class="buttons">
+          <a id="liveBtn" target="_blank">Visit Website</a>
+          <a id="githubBtn" target="_blank">Visit GitHub</a>
+        </div>
+      
+      </div>
+      
+</div>
+
+<!-- ADMIN PANEL -->
+<div class="admin-backdrop" id="adminBackdrop" aria-hidden="true"></div>
+<aside class="admin-panel" id="adminPanel" aria-hidden="true">
+  <div class="admin-panel-content">
+    <div class="admin-header">
+      <h2>Admin Mode</h2>
+      <button id="adminClose" class="admin-close" type="button">Close</button>
+    </div>
+
+    <div class="admin-body">
+      <div class="admin-section">
+        <div class="admin-actions">
+          <button id="adminNew" class="admin-btn" type="button">New Project</button>
+          <button id="adminDelete" class="admin-btn admin-danger" type="button" disabled>Delete</button>
+        </div>
+        <div class="admin-list" id="adminList"></div>
+      </div>
+
+      <form id="adminForm" class="admin-form">
+        <label class="admin-field">
+          Title
+          <input id="adminTitle" type="text" required>
+        </label>
+
+        <label class="admin-field">
+          Description
+          <textarea id="adminDesc" rows="4" required></textarea>
+        </label>
+
+        <label class="admin-field">
+          Tech Used (comma separated)
+          <input id="adminTech" type="text" placeholder="HTML, CSS, JavaScript">
+        </label>
+
+        <label class="admin-field">
+          Live URL
+          <input id="adminLive" type="url" placeholder="https://">
+        </label>
+
+        <label class="admin-field">
+          GitHub URL
+          <input id="adminGithub" type="url" placeholder="https://">
+        </label>
+
+        <label class="admin-field">
+          Image URLs (one per line)
+          <textarea id="adminImages" rows="4" placeholder="images/project1-1.jpg"></textarea>
+        </label>
+
+        <label class="admin-field">
+          Upload Images (local preview)
+          <input id="adminImageFiles" type="file" accept="image/*" multiple>
+        </label>
+
+        <div class="admin-footer">
+          <span id="adminStatus" class="admin-status"></span>
+          <button class="admin-btn admin-primary" type="submit">Save</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</aside>
+
+<!-- ADMIN PASSWORD POPUP -->
+<div class="admin-auth" id="adminAuth" aria-hidden="true">
+  <div class="admin-auth-card" role="dialog" aria-modal="true" aria-labelledby="adminAuthTitle">
+    <h3 id="adminAuthTitle">Admin Access</h3>
+    <p>Enter the admin password to continue.</p>
+    <input id="adminPassword" type="password" placeholder="Password" autocomplete="current-password">
+    <p id="adminAuthError" class="admin-auth-error" aria-live="polite"></p>
+    <div class="admin-auth-actions">
+      <button id="adminAuthCancel" class="admin-btn" type="button">Cancel</button>
+      <button id="adminAuthSubmit" class="admin-btn admin-primary" type="button">Unlock</button>
+    </div>
+  </div>
+</div>
+
+<!-- JAVASCRIPT -->
+<script src="js/projects.js"></script>
+<script src="js/main.js"></script>
+
+</body>
+</html>
