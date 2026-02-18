@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>My Projects</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" type="image/svg+xml" href="https://www.svgrepo.com/show/506715/fire.svg">
+
+  <!-- CSS LINK-->
+  <link rel="stylesheet" href="css/style.css">
+  <script src="https://cdn.jsdelivr.net/npm/tinymce@7.6.0/tinymce.min.js" crossorigin="anonymous"></script>
+</head>
+<body>
+ 
+    <div class="top-header">
+        <!-- Left side: social buttons -->
+        <div class="left-header">
+          <!-- gITHUB -->
+          <a href="https://github.com/yourusername" target="_blank" class="social-btn">
+            <img class="github-icon" src="images/logo/github.svg" alt="GitHub" />
+          </a>          
+         <!-- Divider --><span class="divider"></span> <!-- Divider -->
+          <!-- lINKEDIN -->
+         <a href="https://www.linkedin.com/in/yourusername" target="_blank" class="social-btn">
+            <img class="linkedin-icon" src="images/logo/linkedin.svg" alt="LinkedIn" />
+          </a>
+        <!-- Divider -->  <span class="divider"></span><!-- Divider -->  
+        <!-- Resume button -->
+          <a id="resumeLink" href="files/resume.pdf" target="_blank" class="header-btn">Resume</a>
+          <!-- Divider -->  <span class="divider"></span><!-- Divider -->  
+          <!-- Contact Me button -->
+           <a href="#contact" class="header-btn">Contact Me</a>
+        </div>
+        <div class="right-header">
+          <div class="admin-tools-wrapper">
+            <button id="adminToolsBtn" class="admin-tools-btn" type="button" hidden>Admin Tools ▾</button>
+            <div id="adminDropdown" class="admin-dropdown">
+              <button id="adminAddButton" class="admin-dropdown-item" type="button">Add Project</button>
+              <button id="adminResumeButton" class="admin-dropdown-item" type="button">Upload Resume</button>
+              <button id="adminDeleteButton" class="admin-dropdown-item" type="button">Delete Project</button>
+              <button id="adminSortToggle" class="admin-dropdown-item" type="button">Sort Projects</button>
+              <div class="admin-dropdown-divider"></div>
+              <button id="adminLogout" class="admin-dropdown-item" type="button">Logout</button>
+            </div>
+          </div>
+          <button id="adminToggle" class="admin-toggle" type="button">Admin</button>
+        </div>
+    </div>
+
+
+
+<!-- DARK MODE TOGGLE -->
+<button id="themeToggle" class="theme-toggle">🌙</button>
+
+
+<h1 class="projects-heading">My Projects</h1>
+<!-- PROJECT GRID -->
+<div class="projects-grid" id="projectsGrid"></div>
+
+<!-- PROJECT MODAL -->
+<div class="modal" id="projectModal">
+    <div class="modal-content">
+
+        <span class="close" id="closeModal">&times;</span>
+      
+        <h2 id="projectTitle"></h2>
+      
+        <div class="modal-body">
+          <!-- LEFT: Slider -->
+          <div class="modal-left">
+            <div class="slider-filters" id="sliderFilters">
+              <button class="filter-btn active" data-filter="all">All</button>
+              <button class="filter-btn" data-filter="pc">PC</button>
+              <button class="filter-btn" data-filter="mobile">Mobile</button>
+            </div>
+            <div class="slider">
+              <button id="sliderPrev" class="slider-prev" type="button">&#10094;</button>
+              <img id="sliderImage" alt="Project screenshot">
+              <button id="sliderNext" class="slider-next" type="button">&#10095;</button>
+              <button id="sliderZoom" class="slider-zoom" type="button" aria-label="View full screen">🔍</button>
+            </div>
+            <div class="thumbs" id="thumbs"></div>
+          </div>
+      
+          <!-- RIGHT: Scrollable Description -->
+          <div class="modal-right">
+            <div class="scroll-desc">
+              <p id="projectDesc"></p>
+              <div id="projectTech" class="tech-pills"></div>
+            </div>
+          </div>
+        </div>
+      
+      <div class="buttons">
+          <button id="modalEdit" class="modal-edit" type="button" hidden>Edit</button>
+          <a id="liveBtn" target="_blank">Visit Website</a>
+          <a id="githubBtn" target="_blank">Visit GitHub</a>
+        </div>
+      
+      </div>
+      
+</div>
+
+<!-- LINK ERROR POPUP -->
+<div class="link-error" id="linkError" aria-hidden="true">
+  <div class="link-error-card" role="dialog" aria-modal="true" aria-labelledby="linkErrorTitle">
+    <h3 id="linkErrorTitle">Link Unavailable</h3>
+    <p id="linkErrorMessage">This link is not available yet.</p>
+    <div class="link-error-actions">
+      <button id="linkErrorClose" class="admin-btn admin-primary" type="button">OK</button>
+    </div>
+  </div>
+</div>
+
+<!-- RESUME UPLOAD POPUP -->
+<div class="resume-upload" id="resumeUploadModal" aria-hidden="true">
+  <div class="resume-upload-card" role="dialog" aria-modal="true" aria-labelledby="resumeUploadTitle">
+    <h3 id="resumeUploadTitle">Upload Resume</h3>
+    <p>Upload a PDF to replace the resume link.</p>
+    <input id="resumeFile" type="file" accept="application/pdf">
+    <p id="resumeUploadStatus" class="resume-upload-status" aria-live="polite"></p>
+    <div class="resume-upload-actions">
+      <button id="resumeUploadCancel" class="admin-btn" type="button">Cancel</button>
+      <button id="resumeUploadConfirm" class="admin-btn admin-primary" type="button">Upload</button>
+    </div>
+  </div>
+</div>
+
+<!-- FULLSCREEN IMAGE VIEWER -->
+<div class="fullscreen" id="fullscreenModal" aria-hidden="true">
+  <div class="fullscreen-content" role="dialog" aria-modal="true" aria-label="Project images">
+    <button id="fullscreenClose" class="fullscreen-close" type="button" aria-label="Close full screen">×</button>
+    <button id="fullscreenPrev" class="fullscreen-arrow fullscreen-prev" type="button" aria-label="Previous image">&#10094;</button>
+    <img id="fullscreenImage" alt="Project screenshot full screen">
+    <button id="fullscreenNext" class="fullscreen-arrow fullscreen-next" type="button" aria-label="Next image">&#10095;</button>
+    <div id="fullscreenThumbs" class="thumbs fullscreen-thumbs"></div>
+  </div>
+</div>
+
+<!-- ADMIN PANEL -->
+<div class="admin-backdrop" id="adminBackdrop" aria-hidden="true"></div>
+<aside class="admin-panel" id="adminPanel" aria-hidden="true">
+  <div class="admin-panel-content">
+    <div class="admin-header">
+      <h2>Add Your Project</h2>
+      <button id="adminClose" class="admin-close" type="button" aria-label="Close">×</button>
+    </div>
+
+    <div class="admin-body">
+      <div class="admin-section">
+        <div class="admin-actions">
+          <button id="adminNew" class="admin-btn" type="button">New Project</button>
+          <button id="adminDelete" class="admin-btn admin-danger" type="button" disabled>Delete</button>
+        </div>
+        <div class="admin-list" id="adminList"></div>
+      </div>
+
+      <form id="adminForm" class="admin-form" novalidate>
+        <label class="admin-field">
+          Title
+          <input id="adminTitle" type="text" required>
+        </label>
+
+        <label class="admin-field">
+          Description
+          <textarea id="adminDesc" rows="5"></textarea>
+        </label>
+
+        <label class="admin-field">
+          Tech Used (comma separated)
+          <input id="adminTech" type="text" placeholder="HTML, CSS, JavaScript">
+        </label>
+
+        <label class="admin-field">
+          Live URL
+          <input id="adminLive" type="url" placeholder="https://">
+        </label>
+
+        <label class="admin-field">
+          GitHub URL
+          <div class="admin-inline">
+            <input id="adminGithub" type="url" placeholder="https://github.com/username/repo">
+            <button id="adminGithubConnect" class="admin-btn admin-github" type="button">Connect GitHub</button>
+          </div>
+          <span class="admin-hint">Paste a GitHub repo link and click connect to pull language percentages.</span>
+        </label>
+
+        <!-- Image Upload Grid -->
+        <div class="upload-grid">
+          <!-- PC Section -->
+          <div class="upload-card">
+            <h3>Upload PC Images</h3>
+            <div class="drop-zone" id="pcDropZone">
+              <input type="file" id="adminPcImageFiles" class="hidden-file-input" accept="image/*" multiple>
+              <div class="drop-content">
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="cloud-icon">
+                  <path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"></path>
+                  <polyline points="16 16 12 12 8 16"></polyline>
+                  <line x1="12" y1="12" x2="12" y2="21"></line>
+                </svg>
+                <p>drop your files here<br>or</p>
+                <button type="button" class="browse-btn" onclick="document.getElementById('adminPcImageFiles').click()">Browse</button>
+              </div>
+            </div>
+            <label class="admin-field">
+              PC Image URL
+              <textarea id="adminPcImages" rows="3" placeholder="https://..."></textarea>
+            </label>
+          </div>
+
+          <!-- Mobile Section -->
+          <div class="upload-card">
+            <h3>Upload Mobile Images</h3>
+            <div class="drop-zone" id="mobileDropZone">
+              <input type="file" id="adminMobileImageFiles" class="hidden-file-input" accept="image/*" multiple>
+              <div class="drop-content">
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="cloud-icon">
+                  <path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"></path>
+                  <polyline points="16 16 12 12 8 16"></polyline>
+                  <line x1="12" y1="12" x2="12" y2="21"></line>
+                </svg>
+                <p>drop your files here<br>or</p>
+                <button type="button" class="browse-btn" onclick="document.getElementById('adminMobileImageFiles').click()">Browse</button>
+              </div>
+            </div>
+            <label class="admin-field">
+              Mobile Image URL
+              <textarea id="adminMobileImages" rows="3" placeholder="https://..."></textarea>
+            </label>
+          </div>
+        </div>
+
+        <div class="admin-footer">
+          <span id="adminStatus" class="admin-status"></span>
+          <div class="admin-progress-wrap" aria-live="polite">
+            <div id="adminProgressText" class="admin-progress-text" aria-hidden="true">Compiling pixels...</div>
+            <div id="adminPanelProgress" class="admin-progress" aria-hidden="true">
+              <div class="admin-progress-bar"></div>
+            </div>
+          </div>
+          <button class="admin-btn admin-primary" type="submit">Save</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</aside>
+
+<!-- ADMIN PASSWORD POPUP -->
+<div class="admin-auth" id="adminAuth" aria-hidden="true">
+  <div class="admin-auth-card" role="dialog" aria-modal="true" aria-labelledby="adminAuthTitle">
+    <h3 id="adminAuthTitle">Admin Access</h3>
+    <p>Enter the admin password to continue.</p>
+    <input id="adminPassword" type="password" placeholder="Password" autocomplete="current-password">
+    <p id="adminAuthError" class="admin-auth-error" aria-live="polite"></p>
+    <div class="admin-auth-actions">
+      <button id="adminAuthCancel" class="admin-btn" type="button">Cancel</button>
+      <button id="adminAuthSubmit" class="admin-btn admin-primary" type="button">Unlock</button>
+    </div>
+  </div>
+</div>
+
+<!-- ADMIN DELETE POPUP -->
+<div class="admin-delete" id="adminDeleteModal" aria-hidden="true">
+  <div class="admin-delete-card" role="dialog" aria-modal="true" aria-labelledby="adminDeleteTitle">
+    <h3 id="adminDeleteTitle">Delete Project</h3>
+    <p>Select the project you want to delete.</p>
+    <select id="adminDeleteSelect" aria-label="Select project to delete"></select>
+    <p id="adminDeleteError" class="admin-delete-error" aria-live="polite"></p>
+    <div class="admin-progress-wrap admin-progress-wrap-delete" aria-live="polite">
+      <div id="adminDeleteProgressText" class="admin-progress-text" aria-hidden="true">Deleting assets...</div>
+      <div id="adminDeleteProgress" class="admin-progress" aria-hidden="true">
+        <div class="admin-progress-bar"></div>
+      </div>
+    </div>
+    <div class="admin-delete-actions">
+      <button id="adminDeleteCancel" class="admin-btn" type="button">Cancel</button>
+      <button id="adminDeleteConfirm" class="admin-btn admin-danger" type="button">Delete</button>
+    </div>
+  </div>
+</div>
+
+<!-- JAVASCRIPT -->
+<script src="js/projects.js"></script>
+<script src="js/main.js"></script>
+
+</body>
+</html>
