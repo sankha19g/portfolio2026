@@ -23,9 +23,16 @@ const linkErrorMessage = document.getElementById("linkErrorMessage");
 const linkErrorClose = document.getElementById("linkErrorClose");
 
 const themeToggle = document.getElementById("themeToggle");
+const projectsHeading = document.querySelector(".projects-heading");
 const resumeLink = document.getElementById("resumeLink");
 
 const adminToggle = document.getElementById("adminToggle");
+const adminToolsBtn = document.getElementById("adminToolsBtn");
+const adminDropdown = document.getElementById("adminDropdown");
+
+const adminToolsToggle = document.getElementById("adminToolsToggle");
+const adminTools = document.getElementById("adminTools");
+const adminToolsClose = document.getElementById("adminToolsClose");
 const adminAddButton = document.getElementById("adminAddButton");
 const adminResumeButton = document.getElementById("adminResumeButton");
 const adminDeleteButton = document.getElementById("adminDeleteButton");
@@ -44,8 +51,14 @@ const adminTech = document.getElementById("adminTech");
 const adminLive = document.getElementById("adminLive");
 const adminGithub = document.getElementById("adminGithub");
 const adminGithubConnect = document.getElementById("adminGithubConnect");
-const adminImages = document.getElementById("adminImages");
-const adminImageFiles = document.getElementById("adminImageFiles");
+// Deprecated: const adminImages = document.getElementById("adminImages");
+// Deprecated: const adminImageFiles = document.getElementById("adminImageFiles");
+const adminPcImages = document.getElementById("adminPcImages");
+const adminPcImageFiles = document.getElementById("adminPcImageFiles");
+const adminMobileImages = document.getElementById("adminMobileImages");
+const adminMobileImageFiles = document.getElementById("adminMobileImageFiles");
+const pcDropZone = document.getElementById("pcDropZone");
+const mobileDropZone = document.getElementById("mobileDropZone");
 const adminStatus = document.getElementById("adminStatus");
 const adminAuth = document.getElementById("adminAuth");
 const adminPassword = document.getElementById("adminPassword");
@@ -57,6 +70,10 @@ const adminDeleteSelect = document.getElementById("adminDeleteSelect");
 const adminDeleteConfirm = document.getElementById("adminDeleteConfirm");
 const adminDeleteCancel = document.getElementById("adminDeleteCancel");
 const adminDeleteError = document.getElementById("adminDeleteError");
+const adminDeleteProgress = document.getElementById("adminDeleteProgress");
+const adminDeleteProgressText = document.getElementById("adminDeleteProgressText");
+const adminPanelProgress = document.getElementById("adminPanelProgress");
+const adminProgressText = document.getElementById("adminProgressText");
 const resumeUploadModal = document.getElementById("resumeUploadModal");
 const resumeFile = document.getElementById("resumeFile");
 const resumeUploadConfirm = document.getElementById("resumeUploadConfirm");
@@ -67,19 +84,31 @@ const STORAGE_KEY = "portfolioProjects";
 const ADMIN_AUTH_KEY = "portfolioAdminAuth";
 const ADMIN_PASSWORD = "sunny6787";
 const USE_API = true;
-const API_ENDPOINT = "https://portfolio2026-0qxw.onrender.com/api/projects";
-const API_BASE = USE_API
-  ? API_ENDPOINT.replace(/\/api\/projects\/?$/, "")
-  : "";
+const LOCAL_API_BASE = "http://localhost:3001";
+const PROD_API_BASE = "https://portfolio2026-0qxw.onrender.com";
+const isLocalHost =
+  window.location.hostname === "localhost" ||
+  window.location.hostname === "127.0.0.1";
+const API_BASE = USE_API ? (isLocalHost ? LOCAL_API_BASE : PROD_API_BASE) : "";
+const API_ENDPOINT = USE_API ? `${API_BASE}/api/projects` : "";
 
 let projectsData = [];
 let selectedIndex = null;
 let currentImages = [];
+let activeFilter = "all"; // 'all', 'pc', 'mobile'
 let currentIndex = 0;
 let currentProjectIndex = null;
 let adminAuthenticated = false;
 let isSortMode = false;
 let dragIndex = null;
+let saveProgressInterval = null;
+let saveProgressValue = 0;
+let saveProgressTarget = 0;
+let saveProgressTimer = null;
+let deleteProgressInterval = null;
+let deleteProgressValue = 0;
+let deleteProgressTarget = 0;
+let deleteProgressTimer = null;
 
 async function loadProjects() {
   if (USE_API) {
@@ -139,26 +168,54 @@ function renderGrid() {
     card.className = "project-item";
     card.dataset.index = index;
 
-    if (project.images && project.images.length) {
+    const thumb = (project.pcImages && project.pcImages.length)
+      ? project.pcImages[0]
+      : (project.images && project.images.length ? project.images[0] : null);
+
+    const imgWrapper = document.createElement("div");
+    imgWrapper.className = "project-image-wrapper";
+
+    if (thumb) {
       const img = document.createElement("img");
-      img.src = project.images[0];
+      img.src = thumb;
       img.alt = project.title || "Project image";
-      card.appendChild(img);
+      img.loading = "lazy";
+      imgWrapper.appendChild(img);
     } else {
       const placeholder = document.createElement("div");
       placeholder.className = "project-placeholder";
       placeholder.textContent = "No image";
-      card.appendChild(placeholder);
+      imgWrapper.appendChild(placeholder);
     }
+    card.appendChild(imgWrapper);
 
     const title = document.createElement("p");
     title.className = "project-title";
     title.textContent = project.title || "Untitled Project";
     card.appendChild(title);
 
-    card.onclick = () => {
+    card.onclick = async () => {
       if (isSortMode) return;
-      openModal(project, index);
+
+      let targetProject = project;
+      if (USE_API && project._id && !project.fullDetails) {
+        try {
+          document.body.style.cursor = "wait";
+          const res = await fetch(`${API_ENDPOINT}/${project._id}`);
+          if (res.ok) {
+            const details = await res.json();
+            details.fullDetails = true;
+            // Update the global projectsData array
+            projectsData[index] = details;
+            targetProject = details;
+          }
+        } catch (e) {
+          console.error("Failed to load project details", e);
+        } finally {
+          document.body.style.cursor = "default";
+        }
+      }
+      openModal(targetProject, index);
     };
     grid.appendChild(card);
   });
@@ -207,7 +264,42 @@ function openModal(project, index = null) {
   }
 
   currentProjectIndex = index;
-  setCurrentImages(project.images);
+
+  // Default to "All"
+  setFilter("all", project);
+
+  liveBtn.href = project.live || "#";
+}
+
+function setFilter(type, project = null) {
+  activeFilter = type;
+  const proj = project || projectsData[currentProjectIndex];
+  if (!proj) return;
+
+  // Update Buttons
+  const btns = document.querySelectorAll(".filter-btn");
+  btns.forEach(btn => {
+    btn.classList.toggle("active", btn.dataset.filter === type);
+    btn.onclick = () => setFilter(btn.dataset.filter);
+  });
+
+  // Filter Images
+  let images = [];
+  const pc = proj.pcImages || [];
+  const mobile = proj.mobileImages || [];
+  const old = proj.images || [];
+
+  if (type === "pc") {
+    images = pc.length ? pc : (old.length ? old : []);
+  } else if (type === "mobile") {
+    images = mobile;
+  } else {
+    // All: combine PC (or old) and Mobile
+    images = [...(pc.length ? pc : old), ...mobile];
+  }
+
+  setCurrentImages(images);
+
 
   liveBtn.href = project.live || "#";
   githubBtn.href = project.github || "#";
@@ -405,6 +497,11 @@ function updateArrowState() {
 function applySortModeToGrid() {
   if (!grid) return;
   grid.classList.toggle("sorting", isSortMode);
+
+  if (projectsHeading) {
+    projectsHeading.textContent = isSortMode ? "Drag and Move Projects" : "My Projects";
+  }
+
   const cards = grid.querySelectorAll(".project-item");
   cards.forEach(card => {
     card.draggable = isSortMode;
@@ -586,6 +683,25 @@ if (githubBtn) {
   });
 }
 
+
+
+// ADMIN DROPDOWN LOGIC
+if (adminToolsBtn && adminDropdown) {
+  adminToolsBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    const isActive = adminDropdown.classList.contains("active");
+    adminDropdown.classList.toggle("active", !isActive);
+    adminToolsBtn.classList.toggle("active", !isActive);
+  });
+
+  document.addEventListener("click", (e) => {
+    if (!adminDropdown.contains(e.target) && !adminToolsBtn.contains(e.target)) {
+      adminDropdown.classList.remove("active");
+      adminToolsBtn.classList.remove("active");
+    }
+  });
+}
+
 function setAdminAuthOpen(isOpen) {
   if (!adminAuth) return;
   adminAuth.classList.toggle("active", isOpen);
@@ -599,22 +715,25 @@ function setAdminAuthOpen(isOpen) {
   }
 }
 
+function setAdminToolsOpen(isOpen) {
+  if (!adminTools) return;
+  adminTools.hidden = !isOpen;
+  adminTools.classList.toggle("active", isOpen);
+  adminTools.setAttribute("aria-hidden", String(!isOpen));
+}
+
 function setAdminAuthenticated(isAuthed) {
   adminAuthenticated = isAuthed;
-  if (adminAddButton) {
-    adminAddButton.hidden = !isAuthed;
+
+  if (adminToolsBtn) {
+    adminToolsBtn.hidden = !isAuthed;
   }
-  if (adminResumeButton) {
-    adminResumeButton.hidden = !isAuthed;
-  }
-  if (adminDeleteButton) {
-    adminDeleteButton.hidden = !isAuthed;
-  }
-  if (adminSortToggle) {
-    adminSortToggle.hidden = !isAuthed;
-  }
-  if (adminLogout) {
-    adminLogout.hidden = !isAuthed;
+
+  // Note: We don't need to hide individual buttons inside the dropdown
+  // as the dropdown itself is hidden/shown via adminToolsBtn and CSS.
+
+  if (adminToolsToggle) {
+    adminToolsToggle.hidden = !isAuthed;
   }
   if (adminToggle) {
     adminToggle.hidden = isAuthed;
@@ -627,9 +746,16 @@ function setAdminAuthenticated(isAuthed) {
   } else {
     sessionStorage.removeItem(ADMIN_AUTH_KEY);
     isSortMode = false;
+    // Close dropdown if open
+    if (adminDropdown) adminDropdown.classList.remove("active");
+    if (adminToolsBtn) adminToolsBtn.classList.remove("active");
+
+    setAdminToolsOpen(false);
     if (adminSortToggle) {
       adminSortToggle.classList.remove("active");
       adminSortToggle.textContent = "Sort Projects";
+      adminSortToggle.style.background = "";
+      adminSortToggle.style.color = "";
     }
     applySortModeToGrid();
   }
@@ -739,10 +865,166 @@ function setAdminDeleteOpen(isOpen, preferredIndex = null) {
   if (!adminDeleteModal) return;
   adminDeleteModal.classList.toggle("active", isOpen);
   adminDeleteModal.setAttribute("aria-hidden", String(!isOpen));
+  adminDeleteModal.setAttribute("aria-busy", "false");
   if (adminDeleteError) adminDeleteError.textContent = "";
   if (isOpen) {
     populateDeleteSelect(preferredIndex);
   }
+}
+
+function setDeleteLoading(isLoading) {
+  if (adminDeleteModal) {
+    adminDeleteModal.setAttribute("aria-busy", String(isLoading));
+  }
+  if (adminDeleteProgress) {
+    adminDeleteProgress.classList.toggle("active", isLoading);
+    adminDeleteProgress.setAttribute("aria-hidden", String(!isLoading));
+  }
+  if (adminDeleteProgressText) {
+    adminDeleteProgressText.classList.toggle("active", isLoading);
+    adminDeleteProgressText.setAttribute("aria-hidden", String(!isLoading));
+  }
+  if (adminPanelProgress) {
+    adminPanelProgress.classList.toggle("active", isLoading);
+    adminPanelProgress.setAttribute("aria-hidden", String(!isLoading));
+  }
+  if (adminDeleteSelect) adminDeleteSelect.disabled = isLoading;
+  if (adminDeleteConfirm) adminDeleteConfirm.disabled = isLoading;
+  if (adminDeleteCancel) adminDeleteCancel.disabled = isLoading;
+  if (adminDelete) {
+    adminDelete.disabled = isLoading || selectedIndex === null;
+  }
+}
+
+function setSaveProgressText(text) {
+  if (!adminProgressText) return;
+  adminProgressText.textContent = text;
+  adminProgressText.classList.add("active");
+  adminProgressText.setAttribute("aria-hidden", "false");
+}
+
+function clearSaveProgressText() {
+  if (!adminProgressText) return;
+  adminProgressText.classList.remove("active");
+  adminProgressText.setAttribute("aria-hidden", "true");
+}
+
+function updateSaveProgressBar(value) {
+  if (!adminPanelProgress) return;
+  const bar = adminPanelProgress.querySelector(".admin-progress-bar");
+  if (!bar) return;
+  bar.style.width = `${Math.max(0, Math.min(100, value))}%`;
+}
+
+function updateDeleteProgressBar(value) {
+  if (!adminDeleteProgress) return;
+  const bar = adminDeleteProgress.querySelector(".admin-progress-bar");
+  if (!bar) return;
+  const pct = Math.max(0, Math.min(100, value));
+  bar.style.width = `${pct}%`;
+  if (adminDeleteProgressText) {
+    adminDeleteProgressText.textContent = `Deleting project... ${Math.round(pct)}%`;
+  }
+}
+
+function startSaveLoading() {
+  if (saveProgressInterval) {
+    clearInterval(saveProgressInterval);
+  }
+  if (saveProgressTimer) {
+    clearTimeout(saveProgressTimer);
+  }
+  saveProgressValue = 0;
+  saveProgressTarget = 90;
+  if (adminPanelProgress) {
+    adminPanelProgress.classList.add("active");
+    adminPanelProgress.setAttribute("aria-hidden", "false");
+  }
+  setSaveProgressText("Syncing projects...");
+  updateSaveProgressBar(1);
+
+  saveProgressInterval = setInterval(() => {
+    if (saveProgressValue >= saveProgressTarget) return;
+    const step = saveProgressValue < 50 ? 3 : 1;
+    saveProgressValue = Math.min(saveProgressTarget, saveProgressValue + step);
+    updateSaveProgressBar(saveProgressValue);
+  }, 80);
+
+  saveProgressTimer = setTimeout(() => {
+    saveProgressTarget = 95;
+  }, 1400);
+}
+
+function finishSaveLoading(success = true) {
+  if (saveProgressInterval) {
+    clearInterval(saveProgressInterval);
+    saveProgressInterval = null;
+  }
+  if (saveProgressTimer) {
+    clearTimeout(saveProgressTimer);
+    saveProgressTimer = null;
+  }
+
+  saveProgressValue = 100;
+  updateSaveProgressBar(100);
+  if (adminProgressText) {
+    adminProgressText.textContent = success ? "Deployment complete." : "Save failed.";
+  }
+
+  setTimeout(() => {
+    if (adminPanelProgress) {
+      adminPanelProgress.classList.remove("active");
+      adminPanelProgress.setAttribute("aria-hidden", "true");
+    }
+    updateSaveProgressBar(0);
+    clearSaveProgressText();
+  }, 500);
+}
+
+function startDeleteLoading() {
+  if (deleteProgressInterval) {
+    clearInterval(deleteProgressInterval);
+  }
+  if (deleteProgressTimer) {
+    clearTimeout(deleteProgressTimer);
+  }
+  deleteProgressValue = 1;
+  deleteProgressTarget = 85;
+  setDeleteLoading(true);
+  updateDeleteProgressBar(deleteProgressValue);
+
+  deleteProgressInterval = setInterval(() => {
+    if (deleteProgressValue >= deleteProgressTarget) return;
+    const step = deleteProgressValue < 40 ? 2 : 1;
+    deleteProgressValue = Math.min(deleteProgressTarget, deleteProgressValue + step);
+    updateDeleteProgressBar(deleteProgressValue);
+  }, 120);
+
+  deleteProgressTimer = setTimeout(() => {
+    deleteProgressTarget = 92;
+  }, 1500);
+}
+
+function finishDeleteLoading(success = true) {
+  if (deleteProgressInterval) {
+    clearInterval(deleteProgressInterval);
+    deleteProgressInterval = null;
+  }
+  if (deleteProgressTimer) {
+    clearTimeout(deleteProgressTimer);
+    deleteProgressTimer = null;
+  }
+
+  deleteProgressValue = 100;
+  updateDeleteProgressBar(100);
+  if (adminDeleteProgressText) {
+    adminDeleteProgressText.textContent = success ? "Delete complete." : "Delete failed.";
+  }
+
+  setTimeout(() => {
+    setDeleteLoading(false);
+    updateDeleteProgressBar(0);
+  }, 600);
 }
 
 function populateDeleteSelect(preferredIndex = null) {
@@ -799,6 +1081,12 @@ async function deleteProjectAtIndex(index, options = {}) {
   const confirmed = window.confirm(`Delete "${title}"?`);
   if (!confirmed) return false;
 
+  startDeleteLoading();
+  if (showStatus) {
+    setAdminStatus("Deleting project...", "info");
+  }
+
+  let deleteSuccess = true;
   projectsData.splice(index, 1);
 
   if (selectedIndex !== null) {
@@ -828,12 +1116,15 @@ async function deleteProjectAtIndex(index, options = {}) {
     }
     return true;
   } catch (err) {
+    deleteSuccess = false;
     if (showStatus) {
       setAdminStatus(err.message, "error");
     } else {
       window.alert(err.message);
     }
     return false;
+  } finally {
+    finishDeleteLoading(deleteSuccess);
   }
 }
 
@@ -1181,23 +1472,51 @@ function resetAdminForm() {
   if (!adminForm) return;
   selectedIndex = null;
   adminForm.reset();
-  adminImages.value = "";
+  adminPcImages.value = "";
+  adminMobileImages.value = "";
   setDescriptionHtml("");
   adminDelete.disabled = true;
   renderAdminList();
   setAdminStatus("Creating a new project.");
 }
 
-function selectProject(index) {
+async function selectProject(index) {
   if (!adminForm) return;
   selectedIndex = index;
-  const project = projectsData[index];
+  let project = projectsData[index];
+
+  if (USE_API && project._id && !project.fullDetails) {
+    try {
+      setAdminStatus("Loading details...", "info");
+      const res = await fetch(`${API_ENDPOINT}/${project._id}`);
+      if (res.ok) {
+        const details = await res.json();
+        details.fullDetails = true;
+        projectsData[index] = details;
+        project = details;
+      }
+    } catch (e) {
+      setAdminStatus("Failed to load details.", "error");
+    }
+  }
+
   adminTitle.value = project.title || "";
   setDescriptionHtml(project.description || "");
   adminTech.value = project.tech ? project.tech.join(", ") : "";
   adminLive.value = project.live || "";
   adminGithub.value = project.github || "";
-  adminImages.value = project.images ? project.images.join("\n") : "";
+
+  if (project.pcImages && project.pcImages.length) {
+    adminPcImages.value = project.pcImages.join("\n");
+  } else if (project.images && project.images.length) {
+    // Migration / Fallback: put old images in PC
+    adminPcImages.value = project.images.join("\n");
+  } else {
+    adminPcImages.value = "";
+  }
+
+  adminMobileImages.value = project.mobileImages ? project.mobileImages.join("\n") : "";
+
   adminDelete.disabled = false;
   renderAdminList();
   setAdminStatus(`Editing "${project.title || "Untitled Project"}".`);
@@ -1209,7 +1528,12 @@ function buildProjectFromForm() {
     .map(item => item.trim())
     .filter(Boolean);
 
-  const images = adminImages.value
+  const pcImages = adminPcImages.value
+    .split("\n")
+    .map(item => item.trim())
+    .filter(Boolean);
+
+  const mobileImages = adminMobileImages.value
     .split("\n")
     .map(item => item.trim())
     .filter(Boolean);
@@ -1220,18 +1544,47 @@ function buildProjectFromForm() {
     tech,
     live: adminLive.value.trim(),
     github: adminGithub.value.trim(),
-    images
+    pcImages,
+    mobileImages
   };
 }
 
-function appendImageUrl(url) {
-  const current = adminImages.value.trim();
-  adminImages.value = current ? `${current}\n${url}` : url;
+function appendImageUrl(url, targetInput) {
+  if (!targetInput) return;
+  const current = targetInput.value.trim();
+  targetInput.value = current ? `${current}\n${url}` : url;
 }
 
 if (adminToggle) {
   adminToggle.onclick = () => setAdminAuthOpen(true);
 }
+
+if (adminToolsToggle) {
+  adminToolsToggle.onclick = () => {
+    if (!adminTools) return;
+    const isOpen = adminTools.classList.contains("active");
+    setAdminToolsOpen(!isOpen);
+  };
+}
+
+if (adminToolsClose) {
+  adminToolsClose.onclick = () => setAdminToolsOpen(false);
+}
+
+document.addEventListener("click", event => {
+  if (!adminTools || !adminToolsToggle) return;
+  if (!adminTools.classList.contains("active")) return;
+  if (adminTools.contains(event.target) || adminToolsToggle.contains(event.target)) {
+    return;
+  }
+  setAdminToolsOpen(false);
+});
+
+document.addEventListener("keydown", event => {
+  if (event.key === "Escape") {
+    setAdminToolsOpen(false);
+  }
+});
 
 if (adminClose) {
   adminClose.onclick = () => setAdminOpen(false);
@@ -1247,6 +1600,7 @@ if (adminAddButton) {
       setAdminAuthOpen(true);
       return;
     }
+    setAdminToolsOpen(false);
     openAdminForAdd();
   };
 }
@@ -1257,6 +1611,7 @@ if (adminResumeButton) {
       setAdminAuthOpen(true);
       return;
     }
+    setAdminToolsOpen(false);
     setResumeUploadOpen(true);
   };
 }
@@ -1264,6 +1619,7 @@ if (adminResumeButton) {
 if (adminDeleteButton) {
   adminDeleteButton.onclick = async () => {
     if (!adminAuthenticated) return;
+    setAdminToolsOpen(false);
     let preferredIndex = null;
     const modalOpen = modal && modal.classList.contains("active");
     const panelOpen = adminPanel && adminPanel.classList.contains("active");
@@ -1279,6 +1635,7 @@ if (adminDeleteButton) {
 if (adminSortToggle) {
   adminSortToggle.onclick = () => {
     if (!adminAuthenticated) return;
+    setAdminToolsOpen(false);
     isSortMode = !isSortMode;
     adminSortToggle.classList.toggle("active", isSortMode);
     adminSortToggle.textContent = isSortMode ? "Done Sorting" : "Sort Projects";
@@ -1288,6 +1645,7 @@ if (adminSortToggle) {
 
 if (adminLogout) {
   adminLogout.onclick = () => {
+    setAdminToolsOpen(false);
     setAdminAuthenticated(false);
     setAdminOpen(false);
   };
@@ -1427,6 +1785,7 @@ if (adminForm) {
     }
 
     try {
+      startSaveLoading();
       await persistProjects(projectsData);
       renderGrid();
       renderAdminList();
@@ -1436,8 +1795,10 @@ if (adminForm) {
       if (projectsData[savedIndex]) {
         openModal(projectsData[savedIndex], savedIndex);
       }
+      finishSaveLoading(true);
     } catch (err) {
       setAdminStatus(err.message, "error");
+      finishSaveLoading(false);
     }
   });
 }
@@ -1453,21 +1814,39 @@ if (adminDelete) {
   };
 }
 
-if (adminImageFiles) {
-  adminImageFiles.addEventListener("change", () => {
-    const files = Array.from(adminImageFiles.files || []);
+if (adminPcImageFiles) {
+  adminPcImageFiles.addEventListener("change", () => {
+    const files = Array.from(adminPcImageFiles.files || []);
     if (!files.length) return;
 
     files.forEach(file => {
       const reader = new FileReader();
       reader.onload = () => {
-        appendImageUrl(reader.result);
-        setAdminStatus("Image added. Remember to save.", "info");
+        appendImageUrl(reader.result, adminPcImages);
+        setAdminStatus("PC Image added. Remember to save.", "info");
       };
       reader.readAsDataURL(file);
     });
 
-    adminImageFiles.value = "";
+    adminPcImageFiles.value = "";
+  });
+}
+
+if (adminMobileImageFiles) {
+  adminMobileImageFiles.addEventListener("change", () => {
+    const files = Array.from(adminMobileImageFiles.files || []);
+    if (!files.length) return;
+
+    files.forEach(file => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        appendImageUrl(reader.result, adminMobileImages);
+        setAdminStatus("Mobile Image added. Remember to save.", "info");
+      };
+      reader.readAsDataURL(file);
+    });
+
+    adminMobileImageFiles.value = "";
   });
 }
 
@@ -1502,5 +1881,45 @@ async function init() {
     setAdminStatus(err.message, "error");
   }
 }
+
+function setupDropZone(dropZone, fileInput, targetTextArea, typeName) {
+  if (!dropZone || !fileInput || !targetTextArea) return;
+
+  ["dragenter", "dragover", "dragleave", "drop"].forEach(eventName => {
+    dropZone.addEventListener(eventName, e => {
+      e.preventDefault();
+      e.stopPropagation();
+    }, false);
+  });
+
+  ["dragenter", "dragover"].forEach(eventName => {
+    dropZone.addEventListener(eventName, () => dropZone.classList.add("drag-over"), false);
+  });
+
+  ["dragleave", "drop"].forEach(eventName => {
+    dropZone.addEventListener(eventName, () => dropZone.classList.remove("drag-over"), false);
+  });
+
+  dropZone.addEventListener("drop", e => {
+    const dt = e.dataTransfer;
+    const files = Array.from(dt.files);
+
+    if (files.length) {
+      files.forEach(file => {
+        if (!file.type.startsWith("image/")) return;
+        const reader = new FileReader();
+        reader.onload = () => {
+          appendImageUrl(reader.result, targetTextArea);
+          setAdminStatus(`${typeName} Image added. Remember to save.`, "info");
+        };
+        reader.readAsDataURL(file);
+      });
+    }
+  }, false);
+}
+
+// Initialize Drop Zones
+setupDropZone(pcDropZone, adminPcImageFiles, adminPcImages, "PC");
+setupDropZone(mobileDropZone, adminMobileImageFiles, adminMobileImages, "Mobile");
 
 init();

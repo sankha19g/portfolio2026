@@ -32,15 +32,20 @@
            <a href="#contact" class="header-btn">Contact Me</a>
         </div>
         <div class="right-header">
-          <button id="adminAddButton" class="admin-add-btn" type="button" hidden>Add Project</button>
-          <button id="adminResumeButton" class="admin-resume-btn" type="button" hidden>Upload Resume</button>
-          <button id="adminDeleteButton" class="admin-delete-btn" type="button" hidden>Delete Project</button>
-          <button id="adminSortToggle" class="admin-sort-btn" type="button" hidden>Sort Projects</button>
-          <button id="adminLogout" class="admin-logout" type="button" hidden>Logout</button>
+          <div class="admin-tools-wrapper">
+            <button id="adminToolsBtn" class="admin-tools-btn" type="button" hidden>Admin Tools ▾</button>
+            <div id="adminDropdown" class="admin-dropdown">
+              <button id="adminAddButton" class="admin-dropdown-item" type="button">Add Project</button>
+              <button id="adminResumeButton" class="admin-dropdown-item" type="button">Upload Resume</button>
+              <button id="adminDeleteButton" class="admin-dropdown-item" type="button">Delete Project</button>
+              <button id="adminSortToggle" class="admin-dropdown-item" type="button">Sort Projects</button>
+              <div class="admin-dropdown-divider"></div>
+              <button id="adminLogout" class="admin-dropdown-item" type="button">Logout</button>
+            </div>
+          </div>
           <button id="adminToggle" class="admin-toggle" type="button">Admin</button>
         </div>
     </div>
-
 
 
 
@@ -63,6 +68,11 @@
         <div class="modal-body">
           <!-- LEFT: Slider -->
           <div class="modal-left">
+            <div class="slider-filters" id="sliderFilters">
+              <button class="filter-btn active" data-filter="all">All</button>
+              <button class="filter-btn" data-filter="pc">PC</button>
+              <button class="filter-btn" data-filter="mobile">Mobile</button>
+            </div>
             <div class="slider">
               <button id="sliderPrev" class="slider-prev" type="button">&#10094;</button>
               <img id="sliderImage" alt="Project screenshot">
@@ -175,19 +185,59 @@
           <span class="admin-hint">Paste a GitHub repo link and click connect to pull language percentages.</span>
         </label>
 
-        <label class="admin-field">
-          Image URLs (one per line)
-          <textarea id="adminImages" rows="4" placeholder="images/project1-1.jpg"></textarea>
-        </label>
+        <!-- Image Upload Grid -->
+        <div class="upload-grid">
+          <!-- PC Section -->
+          <div class="upload-card">
+            <h3>Upload PC Images</h3>
+            <div class="drop-zone" id="pcDropZone">
+              <input type="file" id="adminPcImageFiles" class="hidden-file-input" accept="image/*" multiple>
+              <div class="drop-content">
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="cloud-icon">
+                  <path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"></path>
+                  <polyline points="16 16 12 12 8 16"></polyline>
+                  <line x1="12" y1="12" x2="12" y2="21"></line>
+                </svg>
+                <p>drop your files here<br>or</p>
+                <button type="button" class="browse-btn" onclick="document.getElementById('adminPcImageFiles').click()">Browse</button>
+              </div>
+            </div>
+            <label class="admin-field">
+              PC Image URL
+              <textarea id="adminPcImages" rows="3" placeholder="https://..."></textarea>
+            </label>
+          </div>
 
-        <label class="admin-field admin-upload">
-          Upload Images (local preview)
-          <input id="adminImageFiles" class="admin-file-input" type="file" accept="image/*" multiple>
-          <span class="admin-upload-note">Choose multiple images for a quick preview.</span>
-        </label>
+          <!-- Mobile Section -->
+          <div class="upload-card">
+            <h3>Upload Mobile Images</h3>
+            <div class="drop-zone" id="mobileDropZone">
+              <input type="file" id="adminMobileImageFiles" class="hidden-file-input" accept="image/*" multiple>
+              <div class="drop-content">
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="cloud-icon">
+                  <path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"></path>
+                  <polyline points="16 16 12 12 8 16"></polyline>
+                  <line x1="12" y1="12" x2="12" y2="21"></line>
+                </svg>
+                <p>drop your files here<br>or</p>
+                <button type="button" class="browse-btn" onclick="document.getElementById('adminMobileImageFiles').click()">Browse</button>
+              </div>
+            </div>
+            <label class="admin-field">
+              Mobile Image URL
+              <textarea id="adminMobileImages" rows="3" placeholder="https://..."></textarea>
+            </label>
+          </div>
+        </div>
 
         <div class="admin-footer">
           <span id="adminStatus" class="admin-status"></span>
+          <div class="admin-progress-wrap" aria-live="polite">
+            <div id="adminProgressText" class="admin-progress-text" aria-hidden="true">Compiling pixels...</div>
+            <div id="adminPanelProgress" class="admin-progress" aria-hidden="true">
+              <div class="admin-progress-bar"></div>
+            </div>
+          </div>
           <button class="admin-btn admin-primary" type="submit">Save</button>
         </div>
       </form>
@@ -216,6 +266,12 @@
     <p>Select the project you want to delete.</p>
     <select id="adminDeleteSelect" aria-label="Select project to delete"></select>
     <p id="adminDeleteError" class="admin-delete-error" aria-live="polite"></p>
+    <div class="admin-progress-wrap admin-progress-wrap-delete" aria-live="polite">
+      <div id="adminDeleteProgressText" class="admin-progress-text" aria-hidden="true">Deleting assets...</div>
+      <div id="adminDeleteProgress" class="admin-progress" aria-hidden="true">
+        <div class="admin-progress-bar"></div>
+      </div>
+    </div>
     <div class="admin-delete-actions">
       <button id="adminDeleteCancel" class="admin-btn" type="button">Cancel</button>
       <button id="adminDeleteConfirm" class="admin-btn admin-danger" type="button">Delete</button>

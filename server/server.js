@@ -30,7 +30,10 @@ const projectSchema = new mongoose.Schema(
     tech: { type: [String], default: [] },
     live: { type: String, default: "" },
     github: { type: String, default: "" },
-    images: { type: [String], default: [] }
+    // Deprecated: use pcImages and mobileImages instead
+    images: { type: [String], default: [] },
+    pcImages: { type: [String], default: [] },
+    mobileImages: { type: [String], default: [] }
   },
   { timestamps: true }
 );
@@ -54,10 +57,32 @@ app.get("/health", (req, res) => {
 
 app.get("/api/projects", async (req, res) => {
   try {
-    const projects = await Project.find().sort({ createdAt: -1 }).lean();
+    // Return only the first image from arrays to reduce payload size for grid
+    const projects = await Project.find({}, {
+      title: 1,
+      description: 1,
+      tech: 1,
+      live: 1,
+      github: 1,
+      images: { $slice: 1 },
+      pcImages: { $slice: 1 },
+      mobileImages: { $slice: 1 },
+      createdAt: 1,
+      updatedAt: 1
+    }).sort({ createdAt: -1 }).lean();
     res.json(projects);
   } catch (err) {
     res.status(500).json({ error: "Failed to load projects." });
+  }
+});
+
+app.get("/api/projects/:id", async (req, res) => {
+  try {
+    const project = await Project.findById(req.params.id).lean();
+    if (!project) return res.status(404).json({ error: "Project not found" });
+    res.json(project);
+  } catch (err) {
+    res.status(500).json({ error: "Failed to load project details." });
   }
 });
 
