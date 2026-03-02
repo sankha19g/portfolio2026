@@ -83,14 +83,39 @@ const resumeUploadStatus = document.getElementById("resumeUploadStatus");
 const STORAGE_KEY = "portfolioProjects";
 const ADMIN_AUTH_KEY = "portfolioAdminAuth";
 const ADMIN_PASSWORD = "sunny6787";
+const IMGBB_API_KEY = "25cac9ce68d0a1a895b4f8e64a4fc8eb";
+
+// ── Firebase / Firestore setup ───────────────────────────────
+import { initializeApp } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-app.js";
+import {
+  getFirestore,
+  collection,
+  doc,
+  getDocs,
+  getDoc,
+  setDoc,
+  writeBatch,
+  query,
+  orderBy
+} from "https://www.gstatic.com/firebasejs/11.4.0/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyBUxU5ZkJmMe1IfXWFNUloxhzQ2lE3GG6A",
+  authDomain: "personal-website-sankha.firebaseapp.com",
+  projectId: "personal-website-sankha",
+  storageBucket: "personal-website-sankha.firebasestorage.app",
+  messagingSenderId: "2380613033",
+  appId: "1:2380613033:web:b2ec9c782844100f7ef0b8"
+};
+
+const firebaseApp = initializeApp(firebaseConfig);
+const db = getFirestore(firebaseApp);
+
+// Compatibility shim — keep USE_API true so the rest of the code
+// still flows through the API branches, but we swap in Firestore below.
 const USE_API = true;
-const LOCAL_API_BASE = "http://localhost:3001";
-const PROD_API_BASE = "https://portfolio2026-0qxw.onrender.com";
-const isLocalHost =
-  window.location.hostname === "localhost" ||
-  window.location.hostname === "127.0.0.1";
-const API_BASE = USE_API ? (isLocalHost ? LOCAL_API_BASE : PROD_API_BASE) : "";
-const API_ENDPOINT = USE_API ? `${API_BASE}/api/projects` : "";
+const API_BASE = "";       // unused — kept so no reference errors
+const API_ENDPOINT = "";   // unused
 
 let projectsData = [];
 let selectedIndex = null;
@@ -110,46 +135,127 @@ let deleteProgressValue = 0;
 let deleteProgressTarget = 0;
 let deleteProgressTimer = null;
 
-async function loadProjects() {
-  if (USE_API) {
-    const response = await fetch(API_ENDPOINT);
-    if (!response.ok) {
-      throw new Error("Unable to load projects from the server.");
-    }
-    return await response.json();
-  }
+async function compressImage(dataUrl, maxWidth = 1200, quality = 0.7) {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.src = dataUrl;
+    img.onload = () => {
+      const canvas = document.createElement("canvas");
+      let width = img.width;
+      let height = img.height;
 
-  const stored = localStorage.getItem(STORAGE_KEY);
-  if (stored) {
-    try {
-      const parsed = JSON.parse(stored);
-      if (Array.isArray(parsed)) {
-        return parsed;
+      if (width > maxWidth) {
+        height = (maxWidth / width) * height;
+        width = maxWidth;
       }
-    } catch (err) {
-      localStorage.removeItem(STORAGE_KEY);
-    }
-  }
 
-  const seed = Array.isArray(window.seedProjects) ? window.seedProjects : [];
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(seed));
-  return seed;
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext("2d");
+      ctx.drawImage(img, 0, 0, width, height);
+      resolve(canvas.toDataURL("image/jpeg", quality));
+    };
+  });
+}
+
+async function uploadToImgBB(dataUrl) {
+  // ImgBB needs the base64 part only
+  const base64Data = dataUrl.split(",")[1];
+  const formData = new FormData();
+  formData.append("image", base64Data);
+
+  const response = await fetch(`https://api.imgbb.com/1/upload?key=${IMGBB_API_KEY}`, {
+    method: "POST",
+    body: formData
+  });
+
+  if (!response.ok) throw new Error("ImgBB upload failed.");
+  const resData = await response.json();
+  return resData.data.url;
+}
+
+async function loadProjects() {
+  // Load directly from Firestore — no backend server needed
+  try {
+    const q = query(collection(db, "projects"), orderBy("order", "asc"));
+    const snap = await getDocs(q);
+    return snap.docs.map(d => ({ _id: d.id, ...d.data() }));
+  } catch (err) {
+    // Fallback: unordered if composite index not yet built
+    console.warn("Ordered query failed, using unordered:", err.message);
+    const snap = await getDocs(collection(db, "projects"));
+    return snap.docs.map(d => ({ _id: d.id, ...d.data() }));
+  }
 }
 
 async function persistProjects(data) {
-  if (USE_API) {
-    const response = await fetch(API_ENDPOINT, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data)
-    });
-    if (!response.ok) {
-      throw new Error("Unable to save projects to the server.");
+  const CHUNK = 400;
+  const col = collection(db, "projects");
+  const now = new Date().toISOString();
+
+  // --- SAFETY SCRUB: Convert any residual Base64 to ImgBB ---
+  for (const project of data) {
+    // 1. Scrub image arrays
+    const fields = ["images", "pcImages", "mobileImages"];
+    for (const f of fields) {
+      if (Array.isArray(project[f])) {
+        for (let j = 0; j < project[f].length; j++) {
+          const val = project[f][j];
+          if (val && val.startsWith("data:image")) {
+            try {
+              project[f][j] = await uploadToImgBB(val);
+            } catch (e) {
+              console.error("Failed to rescue Base64 image in array", e);
+            }
+          }
+        }
+      }
     }
-    return;
+
+    // 2. Scrub description (TinyMCE embedded images)
+    if (project.description && project.description.includes("data:image")) {
+      try {
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(project.description, "text/html");
+        const images = doc.querySelectorAll('img[src^="data:image"]');
+
+        for (const img of images) {
+          const base64 = img.getAttribute("src");
+          console.log("Found embedded Base64 in description, converting...");
+          const cloudUrl = await uploadToImgBB(base64);
+          img.setAttribute("src", cloudUrl);
+        }
+        project.description = doc.body.innerHTML;
+      } catch (e) {
+        console.error("Failed to scrub description images", e);
+      }
+    }
   }
 
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+  // 1. Delete all existing project docs
+  const existing = await getDocs(col);
+  for (let i = 0; i < existing.docs.length; i += CHUNK) {
+    const batch = writeBatch(db);
+    existing.docs.slice(i, i + CHUNK).forEach(d => batch.delete(d.ref));
+    await batch.commit();
+  }
+
+  // 2. Write the new array in order
+  for (let i = 0; i < data.length; i += CHUNK) {
+    const batch = writeBatch(db);
+    data.slice(i, i + CHUNK).forEach((p, offset) => {
+      const idx = i + offset;
+      const ref = p._id ? doc(col, p._id) : doc(col);
+      const { _id, ...rest } = p;
+      batch.set(ref, {
+        ...rest,
+        order: idx,
+        updatedAt: now,
+        createdAt: rest.createdAt || now
+      });
+    });
+    await batch.commit();
+  }
 }
 
 function renderGrid() {
@@ -198,14 +304,12 @@ function renderGrid() {
       if (isSortMode) return;
 
       let targetProject = project;
-      if (USE_API && project._id && !project.fullDetails) {
+      if (project._id && !project.fullDetails) {
         try {
           document.body.style.cursor = "wait";
-          const res = await fetch(`${API_ENDPOINT}/${project._id}`);
-          if (res.ok) {
-            const details = await res.json();
-            details.fullDetails = true;
-            // Update the global projectsData array
+          const snap = await getDoc(doc(db, "projects", project._id));
+          if (snap.exists()) {
+            const details = { _id: snap.id, ...snap.data(), fullDetails: true };
             projectsData[index] = details;
             targetProject = details;
           }
@@ -265,8 +369,8 @@ function openModal(project, index = null) {
 
   currentProjectIndex = index;
 
-  // Default to "All"
-  setFilter("all", project);
+  // Default to "PC"
+  setFilter("pc", project);
 
   liveBtn.href = project.live || "#";
 }
@@ -807,14 +911,21 @@ function setResumeStatus(message, type = "info") {
 }
 
 async function checkResumeStatus() {
-  if (!USE_API || !API_BASE || !resumeLink) return;
+  if (!resumeLink) return;
   try {
-    const response = await fetch(`${API_BASE}/api/resume/status`);
-    if (!response.ok) return;
-    const data = await response.json();
-    if (data?.exists) {
-      resumeLink.href = `${API_BASE}/api/resume`;
-      resumeLink.setAttribute("data-resume", "api");
+    const snap = await getDoc(doc(db, "resume", "current"));
+    if (snap.exists()) {
+      // Resume is in Firestore — serve it via a blob URL when clicked
+      resumeLink.setAttribute("data-resume", "firestore");
+      resumeLink.href = "#";
+      resumeLink.onclick = async (e) => {
+        e.preventDefault();
+        const d = snap.data();
+        const bytes = Uint8Array.from(atob(d.data), c => c.charCodeAt(0));
+        const blob = new Blob([bytes], { type: d.contentType || "application/pdf" });
+        const url = URL.createObjectURL(blob);
+        window.open(url, "_blank");
+      };
     }
   } catch (err) {
     // ignore
@@ -822,9 +933,6 @@ async function checkResumeStatus() {
 }
 
 async function uploadResumeFile(file) {
-  if (!USE_API || !API_BASE) {
-    throw new Error("Resume upload requires the backend.");
-  }
   const reader = new FileReader();
   const dataUrl = await new Promise((resolve, reject) => {
     reader.onload = () => resolve(reader.result);
@@ -832,32 +940,26 @@ async function uploadResumeFile(file) {
     reader.readAsDataURL(file);
   });
 
-  const response = await fetch(`${API_BASE}/api/resume`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      dataUrl,
-      fileName: file.name,
-      contentType: file.type || "application/pdf"
-    })
+  const match = String(dataUrl).match(/^data:(.+);base64,(.*)$/);
+  if (!match) throw new Error("Invalid file format.");
+
+  await setDoc(doc(db, "resume", "current"), {
+    data: match[2],
+    contentType: match[1] || file.type || "application/pdf",
+    fileName: file.name || "resume.pdf",
+    updatedAt: new Date().toISOString()
   });
 
-  if (!response.ok) {
-    let errorMessage = `Resume upload failed (HTTP ${response.status}).`;
-    try {
-      const data = await response.json();
-      if (data?.error) {
-        errorMessage = data.error;
-      }
-    } catch (err) {
-      // ignore parse errors
-    }
-    throw new Error(errorMessage);
-  }
-
+  // Re-wire the resume link to open from Firestore
   if (resumeLink) {
-    resumeLink.href = `${API_BASE}/api/resume`;
-    resumeLink.setAttribute("data-resume", "api");
+    resumeLink.setAttribute("data-resume", "firestore");
+    resumeLink.href = "#";
+    resumeLink.onclick = (e) => {
+      e.preventDefault();
+      const bytes = Uint8Array.from(atob(match[2]), c => c.charCodeAt(0));
+      const blob = new Blob([bytes], { type: match[1] || "application/pdf" });
+      window.open(URL.createObjectURL(blob), "_blank");
+    };
   }
 }
 
@@ -1485,13 +1587,12 @@ async function selectProject(index) {
   selectedIndex = index;
   let project = projectsData[index];
 
-  if (USE_API && project._id && !project.fullDetails) {
+  if (project._id && !project.fullDetails) {
     try {
       setAdminStatus("Loading details...", "info");
-      const res = await fetch(`${API_ENDPOINT}/${project._id}`);
-      if (res.ok) {
-        const details = await res.json();
-        details.fullDetails = true;
+      const snap = await getDoc(doc(db, "projects", project._id));
+      if (snap.exists()) {
+        const details = { _id: snap.id, ...snap.data(), fullDetails: true };
         projectsData[index] = details;
         project = details;
       }
@@ -1516,6 +1617,18 @@ async function selectProject(index) {
   }
 
   adminMobileImages.value = project.mobileImages ? project.mobileImages.join("\n") : "";
+
+  // Refresh photo arrange grids
+  const _pcGrid = document.getElementById("pcSorterGrid");
+  const _pcSorter = document.getElementById("pcPhotoSorter");
+  const _mobGrid = document.getElementById("mobileSorterGrid");
+  const _mobSorter = document.getElementById("mobilePhotoSorter");
+  if (typeof renderImageSorter === "function") {
+    setTimeout(() => {
+      renderImageSorter(adminPcImages, _pcGrid, _pcSorter);
+      renderImageSorter(adminMobileImages, _mobGrid, _mobSorter);
+    }, 80);
+  }
 
   adminDelete.disabled = false;
   renderAdminList();
@@ -1814,6 +1927,7 @@ if (adminDelete) {
   };
 }
 
+
 if (adminPcImageFiles) {
   adminPcImageFiles.addEventListener("change", () => {
     const files = Array.from(adminPcImageFiles.files || []);
@@ -1821,9 +1935,16 @@ if (adminPcImageFiles) {
 
     files.forEach(file => {
       const reader = new FileReader();
-      reader.onload = () => {
-        appendImageUrl(reader.result, adminPcImages);
-        setAdminStatus("PC Image added. Remember to save.", "info");
+      reader.onload = async () => {
+        try {
+          setAdminStatus("Uploading to cloud...", "info");
+          const compressed = await compressImage(reader.result);
+          const url = await uploadToImgBB(compressed);
+          appendImageUrl(url, adminPcImages);
+          setAdminStatus("PC Image uploaded. Remember to save.", "success");
+        } catch (err) {
+          setAdminStatus("Cloud upload failed.", "error");
+        }
       };
       reader.readAsDataURL(file);
     });
@@ -1839,9 +1960,16 @@ if (adminMobileImageFiles) {
 
     files.forEach(file => {
       const reader = new FileReader();
-      reader.onload = () => {
-        appendImageUrl(reader.result, adminMobileImages);
-        setAdminStatus("Mobile Image added. Remember to save.", "info");
+      reader.onload = async () => {
+        try {
+          setAdminStatus("Uploading to cloud...", "info");
+          const compressed = await compressImage(reader.result);
+          const url = await uploadToImgBB(compressed);
+          appendImageUrl(url, adminMobileImages);
+          setAdminStatus("Mobile Image uploaded. Remember to save.", "success");
+        } catch (err) {
+          setAdminStatus("Cloud upload failed.", "error");
+        }
       };
       reader.readAsDataURL(file);
     });
@@ -1867,6 +1995,12 @@ async function init() {
       setAdminAuthenticated(authed);
     }
     checkResumeStatus();
+
+    // Show loading state in grid while Firestore fetches
+    if (grid) {
+      grid.innerHTML = `<p class="grid-loading">⏳ Loading projects…</p>`;
+    }
+
     projectsData = await loadProjects();
     renderGrid();
     renderAdminList();
@@ -1878,9 +2012,13 @@ async function init() {
       }
     }
   } catch (err) {
+    if (grid) {
+      grid.innerHTML = `<p class="grid-loading grid-error">⚠️ ${err.message}</p>`;
+    }
     setAdminStatus(err.message, "error");
   }
 }
+
 
 function setupDropZone(dropZone, fileInput, targetTextArea, typeName) {
   if (!dropZone || !fileInput || !targetTextArea) return;
@@ -1908,9 +2046,16 @@ function setupDropZone(dropZone, fileInput, targetTextArea, typeName) {
       files.forEach(file => {
         if (!file.type.startsWith("image/")) return;
         const reader = new FileReader();
-        reader.onload = () => {
-          appendImageUrl(reader.result, targetTextArea);
-          setAdminStatus(`${typeName} Image added. Remember to save.`, "info");
+        reader.onload = async () => {
+          try {
+            setAdminStatus(`Uploading ${typeName} to cloud...`, "info");
+            const compressed = await compressImage(reader.result);
+            const url = await uploadToImgBB(compressed);
+            appendImageUrl(url, targetTextArea);
+            setAdminStatus(`${typeName} Image uploaded. Remember to save.`, "success");
+          } catch (err) {
+            setAdminStatus("Cloud upload failed.", "error");
+          }
         };
         reader.readAsDataURL(file);
       });
@@ -1921,5 +2066,142 @@ function setupDropZone(dropZone, fileInput, targetTextArea, typeName) {
 // Initialize Drop Zones
 setupDropZone(pcDropZone, adminPcImageFiles, adminPcImages, "PC");
 setupDropZone(mobileDropZone, adminMobileImageFiles, adminMobileImages, "Mobile");
+
+// ─────────────────────────────────────────────────
+//  PHOTO ARRANGE — Drag-to-reorder sorter
+// ─────────────────────────────────────────────────
+function renderImageSorter(textArea, gridEl, sorterEl) {
+  if (!gridEl || !textArea || !sorterEl) return;
+
+  const urls = textArea.value
+    .split("\n")
+    .map(u => u.trim())
+    .filter(Boolean);
+
+  gridEl.innerHTML = "";
+
+  if (!urls.length) {
+    sorterEl.classList.remove("has-images");
+    return;
+  }
+
+  sorterEl.classList.add("has-images");
+
+  let dragSrcIndex = null;
+
+  urls.forEach((url, index) => {
+    const item = document.createElement("div");
+    item.className = "sorter-item";
+    item.draggable = true;
+    item.dataset.index = index;
+
+    const img = document.createElement("img");
+    img.src = url;
+    img.alt = `Photo ${index + 1}`;
+    img.loading = "lazy";
+    item.appendChild(img);
+
+    // Order badge
+    const badge = document.createElement("span");
+    badge.className = "sorter-badge";
+    badge.textContent = index + 1;
+    item.appendChild(badge);
+
+    // Delete button
+    const del = document.createElement("button");
+    del.type = "button";
+    del.className = "sorter-del";
+    del.textContent = "×";
+    del.title = "Remove this photo";
+    del.onclick = (e) => {
+      e.stopPropagation();
+      urls.splice(index, 1);
+      textArea.value = urls.join("\n");
+      renderImageSorter(textArea, gridEl, sorterEl);
+    };
+    item.appendChild(del);
+
+    // Drag events
+    item.addEventListener("dragstart", () => {
+      dragSrcIndex = index;
+      setTimeout(() => item.classList.add("dragging"), 0);
+    });
+
+    item.addEventListener("dragend", () => {
+      item.classList.remove("dragging");
+      gridEl.querySelectorAll(".sorter-item").forEach(el => el.classList.remove("drag-over"));
+    });
+
+    item.addEventListener("dragover", (e) => {
+      e.preventDefault();
+      gridEl.querySelectorAll(".sorter-item").forEach(el => el.classList.remove("drag-over"));
+      if (index !== dragSrcIndex) item.classList.add("drag-over");
+    });
+
+    item.addEventListener("drop", (e) => {
+      e.preventDefault();
+      if (dragSrcIndex === null || dragSrcIndex === index) return;
+      // Reorder
+      const moved = urls.splice(dragSrcIndex, 1)[0];
+      urls.splice(index, 0, moved);
+      textArea.value = urls.join("\n");
+      dragSrcIndex = null;
+      renderImageSorter(textArea, gridEl, sorterEl);
+    });
+
+    gridEl.appendChild(item);
+  });
+}
+
+// Wire up: re-render sorter whenever a textarea changes
+const pcSorterGrid = document.getElementById("pcSorterGrid");
+const pcPhotoSorter = document.getElementById("pcPhotoSorter");
+const mobileSorterGrid = document.getElementById("mobileSorterGrid");
+const mobilePhotoSorter = document.getElementById("mobilePhotoSorter");
+
+if (adminPcImages) {
+  adminPcImages.addEventListener("input", () =>
+    renderImageSorter(adminPcImages, pcSorterGrid, pcPhotoSorter)
+  );
+}
+
+if (adminMobileImages) {
+  adminMobileImages.addEventListener("input", () =>
+    renderImageSorter(adminMobileImages, mobileSorterGrid, mobilePhotoSorter)
+  );
+}
+
+// Re-render sorters when a project is selected for editing
+const _origSelectProject = selectProject;
+// Patch selectProject to also refresh sorters after loading
+const _patchedSelect = async (index) => {
+  await _origSelectProject(index);
+  // Give the textarea a tick to populate, then render the sorters
+  setTimeout(() => {
+    renderImageSorter(adminPcImages, pcSorterGrid, pcPhotoSorter);
+    renderImageSorter(adminMobileImages, mobileSorterGrid, mobilePhotoSorter);
+  }, 100);
+};
+// ── Global Exports ──────────────────────────────────────────
+// When using <script type="module">, functions are scoped to the file.
+// We must manually attach them to 'window' so HTML onclicks work.
+window.openModal = (project, index) => {
+  currentProjectIndex = index;
+  const modal = document.getElementById("projectModal");
+  if (!modal) return;
+
+  document.getElementById("projectTitle").textContent = project.title || "";
+  document.getElementById("projectDesc").innerHTML = project.description || "";
+
+  // Set filter and open
+  setFilter("pc", project);
+  modal.classList.add("active");
+  document.body.style.overflow = "hidden";
+};
+
+window.setFilter = setFilter;
+window.selectProject = selectProject;
+window.toggleAdmin = () => setAdminOpen(!adminPanel.classList.contains('active'));
+window.init = init;
 
 init();

@@ -69,8 +69,7 @@
           <!-- LEFT: Slider -->
           <div class="modal-left">
             <div class="slider-filters" id="sliderFilters">
-              <button class="filter-btn active" data-filter="all">All</button>
-              <button class="filter-btn" data-filter="pc">PC</button>
+              <button class="filter-btn active" data-filter="pc">PC</button>
               <button class="filter-btn" data-filter="mobile">Mobile</button>
             </div>
             <div class="slider">
@@ -85,8 +84,8 @@
           <!-- RIGHT: Scrollable Description -->
           <div class="modal-right">
             <div class="scroll-desc">
-              <p id="projectDesc"></p>
               <div id="projectTech" class="tech-pills"></div>
+              <p id="projectDesc"></p>
             </div>
           </div>
         </div>
@@ -206,6 +205,11 @@
               PC Image URL
               <textarea id="adminPcImages" rows="3" placeholder="https://..."></textarea>
             </label>
+            <!-- Photo Arrange UI -->
+            <div class="photo-sorter" id="pcPhotoSorter">
+              <p class="photo-sorter-label">🖼 Drag to reorder PC photos</p>
+              <div class="photo-sorter-grid" id="pcSorterGrid"></div>
+            </div>
           </div>
 
           <!-- Mobile Section -->
@@ -227,6 +231,11 @@
               Mobile Image URL
               <textarea id="adminMobileImages" rows="3" placeholder="https://..."></textarea>
             </label>
+            <!-- Photo Arrange UI -->
+            <div class="photo-sorter" id="mobilePhotoSorter">
+              <p class="photo-sorter-label">📱 Drag to reorder Mobile photos</p>
+              <div class="photo-sorter-grid" id="mobileSorterGrid"></div>
+            </div>
           </div>
         </div>
 
@@ -281,7 +290,7 @@
 
 <!-- JAVASCRIPT -->
 <script src="js/projects.js"></script>
-<script src="js/main.js"></script>
+<script type="module" src="js/main.js"></script>
 
 </body>
 </html>

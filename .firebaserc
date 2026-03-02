@@ -1,5 +1,7 @@
 {
-  "projects": {},
+  "projects": {
+    "default": "personal-website-sankha"
+  },
   "targets": {},
   "etags": {}
 }

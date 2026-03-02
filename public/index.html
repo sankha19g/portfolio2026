@@ -16,20 +16,20 @@
         <!-- Left side: social buttons -->
         <div class="left-header">
           <!-- gITHUB -->
-          <a href="https://github.com/yourusername" target="_blank" class="social-btn">
+          <a href="https://github.com/sankha19g" target="_blank" class="social-btn">
             <img class="github-icon" src="images/logo/github.svg" alt="GitHub" />
           </a>          
          <!-- Divider --><span class="divider"></span> <!-- Divider -->
           <!-- lINKEDIN -->
-         <a href="https://www.linkedin.com/in/yourusername" target="_blank" class="social-btn">
+         <a href="https://www.linkedin.com/in/sankha19/" target="_blank" class="social-btn">
             <img class="linkedin-icon" src="images/logo/linkedin.svg" alt="LinkedIn" />
           </a>
         <!-- Divider -->  <span class="divider"></span><!-- Divider -->  
         <!-- Resume button -->
-          <a id="resumeLink" href="files/resume.pdf" target="_blank" class="header-btn">Resume</a>
+          <a id="resumeLink" href="files/resume.pdf" target="_blank" rel="noopener" class="header-btn">Resume</a>
           <!-- Divider -->  <span class="divider"></span><!-- Divider -->  
           <!-- Contact Me button -->
-           <a href="#contact" class="header-btn">Contact Me</a>
+           <button id="contactBtn" class="header-btn">Contact Me</button>
         </div>
         <div class="right-header">
           <div class="admin-tools-wrapper">
@@ -69,8 +69,7 @@
           <!-- LEFT: Slider -->
           <div class="modal-left">
             <div class="slider-filters" id="sliderFilters">
-              <button class="filter-btn active" data-filter="all">All</button>
-              <button class="filter-btn" data-filter="pc">PC</button>
+              <button class="filter-btn active" data-filter="pc">PC</button>
               <button class="filter-btn" data-filter="mobile">Mobile</button>
             </div>
             <div class="slider">
@@ -85,8 +84,8 @@
           <!-- RIGHT: Scrollable Description -->
           <div class="modal-right">
             <div class="scroll-desc">
-              <p id="projectDesc"></p>
               <div id="projectTech" class="tech-pills"></div>
+              <p id="projectDesc"></p>
             </div>
           </div>
         </div>
@@ -206,6 +205,11 @@
               PC Image URL
               <textarea id="adminPcImages" rows="3" placeholder="https://..."></textarea>
             </label>
+            <!-- Photo Arrange UI -->
+            <div class="photo-sorter" id="pcPhotoSorter">
+              <p class="photo-sorter-label">🖼 Drag to reorder PC photos</p>
+              <div class="photo-sorter-grid" id="pcSorterGrid"></div>
+            </div>
           </div>
 
           <!-- Mobile Section -->
@@ -227,6 +231,11 @@
               Mobile Image URL
               <textarea id="adminMobileImages" rows="3" placeholder="https://..."></textarea>
             </label>
+            <!-- Photo Arrange UI -->
+            <div class="photo-sorter" id="mobilePhotoSorter">
+              <p class="photo-sorter-label">📱 Drag to reorder Mobile photos</p>
+              <div class="photo-sorter-grid" id="mobileSorterGrid"></div>
+            </div>
           </div>
         </div>
 
@@ -279,9 +288,48 @@
   </div>
 </div>
 
+<!-- CONTACT MODAL -->
+<div class="contact-overlay" id="contactModal" aria-hidden="true">
+  <div class="contact-popup" role="dialog" aria-modal="true" aria-labelledby="contactModalTitle">
+    <button class="contact-close" id="contactClose" type="button" aria-label="Close">×</button>
+    <h2 class="contact-title" id="contactModalTitle">Get In Touch</h2>
+    <p class="contact-subtitle">Have a project in mind or just want to say hi?<br>Reach out through any of the options below.</p>
+
+    <!-- Gmail button -->
+    <div class="contact-options">
+      <a href="mailto:sankha.mumu@gmail.com" class="contact-btn contact-gmail contact-btn-full" target="_blank" rel="noopener">
+        <svg class="contact-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M20 4H4C2.9 4 2 4.9 2 6V18C2 19.1 2.9 20 4 20H20C21.1 20 22 19.1 22 18V6C22 4.9 21.1 4 20 4Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M22 6L12 13L2 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <span>Send Email via Gmail</span>
+      </a>
+    </div>
+
+    <!-- Divider -->
+    <div class="contact-divider">
+      <span>or message me on Telegram</span>
+    </div>
+
+    <!-- Inline Telegram Form -->
+    <form class="tg-form" id="tgForm" novalidate>
+      <input id="tgName" type="text" class="tg-input" placeholder="Your name (optional)" autocomplete="off" />
+      <textarea id="tgMessage" class="tg-textarea" placeholder="Type your message..." rows="4" required></textarea>
+      <p class="tg-status" id="tgStatus" aria-live="polite"></p>
+      <button type="submit" class="tg-send-btn" id="tgSendBtn">
+        <svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18">
+          <path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/>
+        </svg>
+        Send via Telegram
+      </button>
+    </form>
+
+  </div>
+</div>
+
 <!-- JAVASCRIPT -->
 <script src="js/projects.js"></script>
-<script src="js/main.js"></script>
+<script type="module" src="js/main.js"></script>
 
 </body>
 </html>
