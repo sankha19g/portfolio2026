@@ -92,7 +92,7 @@ export default function ProjectModal({
               <button
                 onClick={goPrev}
                 disabled={currentIndex <= 0}
-                className="absolute left-2 top-1/2 -translate-y-1/2 z-10 w-11 h-11 rounded-full flex items-center justify-center text-3xl transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
+                className="absolute left-2 top-1/2 -translate-y-1/2 z-10 w-11 h-11 rounded-full flex items-center justify-center text-3xl transition-opacity disabled:opacity-40 cursor-pointer"
                 style={{
                   background: "rgba(0,0,0,0.05)",
                   border: "2px solid rgba(0,0,0,0.7)",
@@ -123,7 +123,7 @@ export default function ProjectModal({
               <button
                 onClick={goNext}
                 disabled={currentIndex >= currentImages.length - 1}
-                className="absolute right-2 top-1/2 -translate-y-1/2 z-10 w-11 h-11 rounded-full flex items-center justify-center text-3xl transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
+                className="absolute right-2 top-1/2 -translate-y-1/2 z-10 w-11 h-11 rounded-full flex items-center justify-center text-3xl transition-opacity disabled:opacity-40 cursor-pointer"
                 style={{
                   background: "rgba(0,0,0,0.05)",
                   border: "2px solid rgba(0,0,0,0.7)",
