@@ -1,0 +1,100 @@
+@import url("https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700&display=swap");
+@import "tailwindcss";
+
+
+:root {
+  --bg: #ffffff;
+  --text: #111;
+  --card-bg: #ffffff;
+  --primary-color: #111;
+  --primary-hover-color: #333;
+  --text-color: #333;
+  --bg-color: #fff;
+  --btn-text: #fff;
+  --border-color: rgba(0, 0, 0, 0.15);
+  --bg-secondary: rgba(0, 0, 0, 0.04);
+  --icon-filter: none;
+}
+
+.dark {
+  --bg: #0f0f0f;
+  --text: #f1f1f1;
+  --card-bg: #1a1a1a;
+  --primary-color: #fff;
+  --primary-hover-color: #e6e6e6;
+  --text-color: #fff;
+  --bg-color: #111;
+  --btn-text: #111;
+  --border-color: rgba(255, 255, 255, 0.15);
+  --bg-secondary: rgba(255, 255, 255, 0.06);
+  --icon-filter: invert(1);
+}
+
+body {
+  font-family: "Sora", Arial, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  transition: background 0.3s ease, color 0.3s ease;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #888; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #555; }
+
+/* Modal scroll description typography */
+.scroll-desc h1, .scroll-desc h2, .scroll-desc h3 {
+  margin-top: 1.5rem;
+  margin-bottom: 0.75rem;
+  font-weight: 700;
+  line-height: 1.2;
+}
+.scroll-desc p { margin-bottom: 1rem; line-height: 1.6; }
+.scroll-desc ul, .scroll-desc ol { padding-left: 24px; margin-bottom: 1rem; }
+.scroll-desc li { margin-bottom: 0.5rem; line-height: 1.6; list-style-position: outside; }
+.scroll-desc li p, .scroll-desc li div { margin: 0 !important; display: inline; }
+.scroll-desc ul li { list-style-type: disc; }
+.scroll-desc ol li { list-style-type: decimal; }
+
+/* TinyMCE host */
+.tox-tinymce { border-radius: 8px !important; }
+
+/* Slider image fade */
+.slider-img-fade { transition: opacity 0.2s ease; }
+
+/* Progress bar animation */
+@keyframes pulse {
+  0%, 100% { opacity: 0.35; }
+  50% { opacity: 0.7; }
+}
+.animate-pulse-soft { animation: pulse 1.6s ease-in-out infinite; }
+
+/* Sorter item drag effects */
+.sorter-item.dragging { opacity: 0.5; }
+.sorter-item.drag-over { outline: 2px dashed #7b3ff2; outline-offset: 2px; }
+
+/* Drop zone drag-over */
+.drop-zone-active {
+  border-color: #7b3ff2 !important;
+  background: rgba(123, 63, 242, 0.05) !important;
+}
+
+/* Grid sort mode */
+.grid-sorting .project-card { cursor: grab; }
+.grid-sorting .project-card:active { cursor: grabbing; }
+.grid-sorting .project-card.dragging { opacity: 0.5; }
+.grid-sorting .project-card.drop-target {
+  outline: 2px dashed var(--primary-color);
+  outline-offset: 4px;
+}
+
+/* Admin panel slide */
+@keyframes slideInRight {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}
+.admin-panel-open { animation: slideInRight 0.3s ease; }
+
+/* Dark mode TinyMCE adjustment */
+.dark .tox-tinymce { filter: invert(0.88) hue-rotate(180deg); }
