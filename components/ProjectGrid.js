@@ -127,6 +127,7 @@ export default function ProjectGrid({
             }`}
             style={{
               width: "300px",
+              maxWidth: "100%",
               flexShrink: 0,
             }}
             onMouseEnter={(e) => {

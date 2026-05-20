@@ -270,8 +270,7 @@ export default function Home() {
         }}
       >
         <h1
-          className="font-bold tracking-widest mt-0 mb-0"
-          style={{ fontSize: "3rem" }}
+          className="font-bold tracking-widest mt-0 mb-0 text-3xl md:text-5xl"
         >
           {isSortMode ? "Drag and Move Projects" : "My Projects"}
         </h1>
