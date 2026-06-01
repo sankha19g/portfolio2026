@@ -150,7 +150,7 @@ export default function ProjectModal({
               </div>
 
               {/* Thumbnails */}
-              <div className="flex gap-2 mt-3 overflow-x-auto pb-1">
+              <div className="flex gap-2 mt-3 p-1 overflow-x-auto pb-1">
                 {currentImages.map((src, i) => (
                   <img
                     key={i}
@@ -186,7 +186,7 @@ export default function ProjectModal({
                     {project.tech.map((t, i) => (
                       <span
                         key={i}
-                        className="px-2.5 py-1 rounded-md text-xs font-semibold border transition-all"
+                        className="px-2.5 py-1 rounded-md text-xs font-semibold border transition-all cursor-pointer hover:px-[20px]"
                         style={{
                           background: "var(--bg-secondary)",
                           borderColor: "var(--border-color)",
