@@ -2,6 +2,29 @@
 
 import { useRef, useState, useCallback } from "react";
 import { persistProjects } from "@/lib/projectsApi";
+import { motion } from "motion/react";
+
+const containerVariants = {
+  hidden: { opacity: 0 },
+  show: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.08,
+    },
+  },
+};
+
+const cardVariants = {
+  hidden: { opacity: 0, y: 20 },
+  show: {
+    opacity: 1,
+    y: 0,
+    transition: {
+      duration: 0.5,
+      ease: [0.25, 0.1, 0.25, 1],
+    },
+  },
+};
 
 export default function ProjectGrid({
   projects,
@@ -59,11 +82,52 @@ export default function ProjectGrid({
   );
 
   if (loading) {
+    const skeletons = Array.from({ length: 6 });
     return (
-      <div className="max-w-6xl mx-auto px-5">
-        <p className="text-center py-12 text-sm opacity-60 animate-pulse-soft">
-          ⏳ Loading projects…
-        </p>
+      <div
+        className="animate-pulse"
+        style={{
+          display: "flex",
+          flexWrap: "wrap",
+          justifyContent: "center",
+          gap: "24px",
+          padding: "0 20px",
+          maxWidth: "1200px",
+          margin: "0 auto",
+        }}
+      >
+        {skeletons.map((_, i) => (
+          <div
+            key={i}
+            className="overflow-hidden flex flex-col rounded-xl"
+            style={{
+              width: "300px",
+              maxWidth: "100%",
+              flexShrink: 0,
+              border: "1px solid var(--border-color)",
+            }}
+          >
+            {/* Image Skeleton */}
+            <div
+              style={{
+                aspectRatio: isSquareGrid ? "1/1" : "16/9",
+                background: "var(--bg-secondary)",
+                width: "100%",
+              }}
+            />
+            {/* Title Skeleton */}
+            <div style={{ padding: "12px", display: "flex", justifyContent: "center" }}>
+              <div
+                style={{
+                  height: "14px",
+                  width: "60%",
+                  background: "var(--bg-secondary)",
+                  borderRadius: "4px",
+                }}
+              />
+            </div>
+          </div>
+        ))}
       </div>
     );
   }
@@ -85,9 +149,12 @@ export default function ProjectGrid({
   }
 
   return (
-    <div
+    <motion.div
       ref={gridRef}
       className={isSortMode ? "grid-sorting" : ""}
+      variants={containerVariants}
+      initial="hidden"
+      animate="show"
       style={{
         display: "flex",
         flexWrap: "wrap",
@@ -103,14 +170,15 @@ export default function ProjectGrid({
           project.pcImages?.length
             ? project.pcImages[0]
             : project.images?.length
-            ? project.images[0]
-            : null;
+              ? project.images[0]
+              : null;
 
         const isDragging = dragIndex === index;
         const isDropTarget = dropTarget === index && dragIndex !== index;
 
         return (
-          <div
+          <motion.div
+            variants={cardVariants}
             key={project._id || index}
             data-index={index}
             draggable={isSortMode}
@@ -120,67 +188,49 @@ export default function ProjectGrid({
             onDrop={(e) => handleDrop(e, index)}
             onDragEnd={() => { setDragIndex(null); setDropTarget(null); }}
             onClick={() => onProjectClick(project, index)}
-            className={`project-card cursor-pointer overflow-hidden flex flex-col rounded-xl transition-all duration-300 ${
+            whileHover={!isSortMode ? { y: -6, scale: 1.02, boxShadow: "0 14px 36px rgba(0,0,0,0.14)" } : {}}
+            transition={{ type: "spring", stiffness: 300, damping: 24 }}
+            className={`project-card cursor-pointer overflow-hidden flex flex-col rounded-xl ${
               isSortMode ? "cursor-grab active:cursor-grabbing" : ""
-            } ${isDragging ? "dragging opacity-50" : ""} ${
-              isDropTarget ? "drop-target" : ""
+            } ${isDragging ? "dragging opacity-50" : ""} ${isDropTarget ? "drop-target" : ""
             }`}
             style={{
               width: "300px",
               maxWidth: "100%",
               flexShrink: 0,
             }}
-            onMouseEnter={(e) => {
-              if (!isSortMode) {
-                e.currentTarget.style.transform = "translateY(-6px) scale(1.02)";
-                e.currentTarget.style.boxShadow = "0 14px 36px rgba(0,0,0,0.14)";
-              }
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.transform = "";
-              e.currentTarget.style.boxShadow = "";
-            }}
           >
-            {/* Image */}
-            <div
-              className="w-full overflow-hidden relative transition-all duration-300"
-              style={{ aspectRatio: isSquareGrid ? "1/1" : "16/9", background: "rgba(0,0,0,0.03)" }}
-            >
-              {thumb ? (
-                <img
-                  src={thumb}
-                  alt={project.title || "Project image"}
-                  loading="lazy"
-                  className="w-full h-full object-cover transition-all duration-500"
-                  style={{ transformOrigin: "center center" }}
-                  onMouseEnter={(e) => {
-                    if (!isSortMode) {
-                      e.target.style.transform = "scale(1.1)";
-                      e.target.style.filter = "grayscale(30%)";
-                    }
-                  }}
-                  onMouseLeave={(e) => {
-                    e.target.style.transform = "";
-                    e.target.style.filter = "";
-                  }}
-                />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center border border-dashed border-gray-400 text-gray-500 text-sm">
-                  No image
-                </div>
-              )}
+            <div>
+              {/* Image */}
+              <div
+                className="w-full overflow-hidden relative transition-all duration-300"
+                style={{ aspectRatio: isSquareGrid ? "1/1" : "16/9", background: "rgba(0,0,0,0.03)" }}
+              >
+                {thumb ? (
+                  <img
+                    src={thumb}
+                    alt={project.title || "Project image"}
+                    loading="lazy"
+                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                    style={{ transformOrigin: "center center" }}
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center border border-dashed border-gray-400 text-gray-500 text-sm">
+                    No image
+                  </div>
+                )}
+              </div>
+              {/* Title */}
+              <p
+                className="text-center mt-2 mb-1 font-semibold text-sm px-2 cursor-pointer"
+                style={{ color: "var(--text)" }}
+              >
+                {project.title || "Untitled Project"}
+              </p>
             </div>
-
-            {/* Title */}
-            <p
-              className="text-center mt-2 mb-1 font-semibold text-sm px-2 cursor-pointer"
-              style={{ color: "var(--text)" }}
-            >
-              {project.title || "Untitled Project"}
-            </p>
-          </div>
+          </motion.div>
         );
       })}
-    </div>
+    </motion.div>
   );
 }

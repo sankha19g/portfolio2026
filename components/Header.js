@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import ThemeToggle from "./ThemeToggle";
 
 export default function Header({
@@ -138,8 +139,8 @@ export default function Header({
           <span className="w-px h-6 mx-2.5 hidden md:inline-block" style={{ background: "#888" }} />
 
           {/* Contact */}
-          <a
-            href="#contact"
+          <Link
+            href="/contact"
             className="px-3 py-1.5 rounded-md font-semibold text-sm transition-all hover:scale-105 hidden md:inline-block"
             style={{
               background: "var(--primary-color)",
@@ -147,7 +148,7 @@ export default function Header({
             }}
           >
             Contact Me
-          </a>
+          </Link>
         </div>
 
         {/* RIGHT: Admin + Theme */}
@@ -253,8 +254,8 @@ export default function Header({
             Resume
           </a>
 
-          <a
-            href="#contact"
+          <Link
+            href="/contact"
             onClick={() => setMobileMenuOpen(false)}
             className="w-full py-3.5 text-center rounded-xl font-semibold text-base transition-all active:scale-95 flex items-center justify-center"
             style={{
@@ -263,7 +264,7 @@ export default function Header({
             }}
           >
             Contact Me
-          </a>
+          </Link>
 
           <div className="h-px w-full my-1" style={{ background: "var(--border-color)" }} />
 

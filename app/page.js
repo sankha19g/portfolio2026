@@ -12,6 +12,7 @@ import AdminAuthModal from "@/components/AdminAuthModal";
 import AdminDeleteModal from "@/components/AdminDeleteModal";
 import ResumeUploadModal from "@/components/ResumeUploadModal";
 import LinkErrorModal from "@/components/LinkErrorModal";
+import { AnimatePresence } from "motion/react";
 
 const ADMIN_AUTH_KEY = "portfolioAdminAuth";
 
@@ -288,24 +289,27 @@ export default function Home() {
       />
 
       {/* PROJECT MODAL */}
-      {modalProject && (
-        <ProjectModal
-          project={modalProject}
-          currentImages={currentImages}
-          currentIndex={currentImageIndex}
-          activeFilter={activeFilter}
-          adminAuthenticated={adminAuthenticated}
-          onClose={closeProjectModal}
-          onFilterChange={handleFilterChange}
-          onImageIndexChange={setCurrentImageIndex}
-          onFullscreen={() => setFullscreenOpen(true)}
-          onEdit={() => {
-            closeProjectModal();
-            openAdminEdit(modalIndex);
-          }}
-          onLinkClick={handleLinkClick}
-        />
-      )}
+      <AnimatePresence>
+        {modalProject && (
+          <ProjectModal
+            project={modalProject}
+            index={modalIndex}
+            currentImages={currentImages}
+            currentIndex={currentImageIndex}
+            activeFilter={activeFilter}
+            adminAuthenticated={adminAuthenticated}
+            onClose={closeProjectModal}
+            onFilterChange={handleFilterChange}
+            onImageIndexChange={setCurrentImageIndex}
+            onFullscreen={() => setFullscreenOpen(true)}
+            onEdit={() => {
+              closeProjectModal();
+              openAdminEdit(modalIndex);
+            }}
+            onLinkClick={handleLinkClick}
+          />
+        )}
+      </AnimatePresence>
 
       {/* FULLSCREEN VIEWER */}
       {fullscreenOpen && (

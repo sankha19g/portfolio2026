@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import {
   persistProjects,
   compressImage,
-  uploadToImgBB,
+  uploadToCloudinary,
 } from "@/lib/projectsApi";
 import { loadProjectDetails } from "@/lib/projectsApi";
 import { connectGithubRepo } from "@/lib/techUtils";
@@ -163,7 +163,7 @@ export default function AdminPanel({
           reader.readAsDataURL(file);
         });
         const compressed = await compressImage(dataUrl);
-        const url = await uploadToImgBB(compressed);
+        const url = await uploadToCloudinary(compressed);
         setForm((prev) => ({
           ...prev,
           [field]: prev[field] ? `${prev[field]}\n${url}` : url,

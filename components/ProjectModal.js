@@ -1,9 +1,11 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { motion } from "motion/react";
 
 export default function ProjectModal({
   project,
+  index,
   currentImages,
   currentIndex,
   activeFilter,
@@ -34,12 +36,20 @@ export default function ProjectModal({
   };
 
   return (
-    <div
-      className="fixed inset-0 flex items-center justify-center z-105 transition-opacity duration-300 px-4 py-6"
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.2 }}
+      className="fixed inset-0 flex items-center justify-center z-105 px-4 py-6"
       style={{ background: "rgba(0,0,0,0.8)" }}
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
-      <div
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95, y: 16 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.95, y: 16 }}
+        transition={{ type: "spring", stiffness: 320, damping: 28 }}
         className="relative w-full max-w-5xl rounded-xl overflow-hidden flex flex-col"
         style={{
           background: "var(--card-bg)",
@@ -75,7 +85,7 @@ export default function ProjectModal({
                     className="px-4 py-1.5 rounded-full text-sm cursor-pointer transition-all border"
                     style={{
                       background: activeFilter === f ? "var(--primary-color)" : "transparent",
-                      color: activeFilter === f ? "#fff" : "var(--text-color)",
+                      color: activeFilter === f ? "var(--btn-text)" : "var(--text)",
                       borderColor: activeFilter === f ? "var(--primary-color)" : "var(--border-color)",
                     }}
                   >
@@ -253,7 +263,7 @@ export default function ProjectModal({
             Visit GitHub
           </a>
         </div>
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   );
 }
